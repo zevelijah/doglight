@@ -1,0 +1,17 @@
+{
+  "name": "doglight",
+  "version": "1.0.0",
+  "description": "Shine a light on your dogflight.io play.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
+    "@types/chrome": "^0.2.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  }
+}

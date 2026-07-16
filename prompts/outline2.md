@@ -1,0 +1,1 @@
+The filestructure I've set up uses the @types/chrome for typescript chrome type definitons. `content` will run on dogflight.io and track clicks and DOM, the background will montor storage and handle events.
