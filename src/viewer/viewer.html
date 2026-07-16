@@ -21,6 +21,10 @@
       .panel { background: #1f2937; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
       .session-card { background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
       .session-card .meta { color: #9ca3af; font-size: 12px; margin-top: 6px; }
+      .overview-line { white-space: pre-wrap; margin-top: 10px; color: #d1d5db; }
+      .overview-details { margin-top: 10px; }
+      .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; margin-top: 8px; }
+      .stat-row { background: #1f2937; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
       details { margin-top: 8px; }
       summary { cursor: pointer; color: #93c5fd; }
       pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin-top: 6px; }
@@ -32,11 +36,12 @@
       <div class="row">Latest stats: <span id="statsSummary">None yet</span></div>
       <div class="row">Latest recent stats: <span id="recentSummary">None yet</span></div>
       <div class="row">Active session: <span id="sessionSummary">None</span></div>
+      <div id="overviewContainer"></div>
       <button id="refresh">Refresh</button>
       <button id="export" class="secondary">Export JSON</button>
       <button id="openFullPage" class="secondary">Open full viewer</button>
     </div>
-    <div class="panel">
+    <div id="sessionsSection" class="panel">
       <h2>Saved game sessions</h2>
       <div id="sessionsList">Loading…</div>
     </div>

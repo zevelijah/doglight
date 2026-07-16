@@ -2,9 +2,96 @@ import type { ExtensionState, GameSession } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
 
+type MetricValue = number | undefined;
+
 function formatStats(value: Record<string, unknown> | undefined) {
   if (!value) return 'None';
   return `${value.score ?? 'n/a'} / ${value.kills ?? 'n/a'} kills / ${value.games ?? 'n/a'} games`;
+}
+
+function toDisplayTime(value: number | undefined) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'n/a';
+  return new Date(value).toLocaleString();
+}
+
+function formatMetric(value: MetricValue) {
+  return typeof value === 'number' ? value.toString() : 'n/a';
+}
+
+function getResult(recentStats: Record<string, unknown> | undefined) {
+  const points = Number(recentStats?.points ?? 0);
+  const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
+  if (points === 100) return 'Won';
+  if (pointsAgainst === 100) return 'Lost';
+  return 'Disconnected';
+}
+
+function getPrecision(recentStats: Record<string, unknown> | undefined) {
+  const shots = Number(recentStats?.shots ?? 0);
+  const hits = Number(recentStats?.hits ?? 0);
+  if (!shots) return 'n/a';
+  return (hits / shots).toFixed(3);
+}
+
+function getDamagePerShot(recentStats: Record<string, unknown> | undefined) {
+  const shots = Number(recentStats?.shots ?? 0);
+  const damage = Number(recentStats?.damage ?? 0);
+  if (!shots) return 'n/a';
+  return (damage / shots).toFixed(3);
+}
+
+function renderOverview(state: ExtensionState) {
+  const container = document.getElementById('overviewContainer');
+  if (!container) return;
+
+  const allTimeStats = state.latestStats as Record<string, unknown> | undefined;
+  const latestRecent = state.latestRecentStats as Record<string, unknown> | undefined;
+  const totalGames = Number(allTimeStats?.games ?? 0);
+
+  const rankingFields = [
+    ['Weekly High Score', allTimeStats?.weeklyHighScore],
+    ['Monthly High Score', allTimeStats?.monthlyHighScore],
+    ['All Time High Score', allTimeStats?.allTimeHighScore],
+  ];
+  const rankingText = rankingFields
+    .filter(([, value]) => typeof value === 'number' && Number(value) !== -1)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join('   ');
+
+  container.innerHTML = `
+    <details class="overview-details" open>
+      <summary>Overall stats</summary>
+      <div class="overview-line">${rankingText || 'No rankings yet'}     Games: ${totalGames}     Best: ${rankingText || 'n/a'}</div>
+      <div class="stat-grid">
+        <div class="stat-row">Shots: ${formatMetric(allTimeStats?.shots as MetricValue)}</div>
+        <div class="stat-row">Hits: ${formatMetric(allTimeStats?.hits as MetricValue)}</div>
+        <div class="stat-row">Precision: ${getPrecision(allTimeStats as Record<string, unknown> | undefined)}</div>
+        <div class="stat-row">Damage: ${formatMetric(allTimeStats?.damage as MetricValue)}</div>
+        <div class="stat-row">Damage / shot: ${getDamagePerShot(allTimeStats as Record<string, unknown> | undefined)}</div>
+        <div class="stat-row">Bombers: ${formatMetric(allTimeStats?.bombers as MetricValue)}</div>
+        <div class="stat-row">Scouts: ${formatMetric(allTimeStats?.scouts as MetricValue)}</div>
+        <div class="stat-row">Kills: ${formatMetric(allTimeStats?.kills as MetricValue)}</div>
+        <div class="stat-row">Deaths: ${formatMetric(allTimeStats?.deaths as MetricValue)}</div>
+        <div class="stat-row">Kills - Deaths: ${formatMetric((Number(allTimeStats?.kills ?? 0) - Number(allTimeStats?.deaths ?? 0)) as MetricValue)}</div>
+        <div class="stat-row">Score: ${formatMetric(allTimeStats?.score as MetricValue)}</div>
+        <div class="stat-row">Bonus: ${formatMetric(allTimeStats?.bonus as MetricValue)}</div>
+      </div>
+    </details>
+    <details class="overview-details">
+      <summary>Latest session snapshot</summary>
+      <div class="overview-line">${latestRecent ? `Time: ${toDisplayTime(Number(latestRecent?.time))}` : 'No recent session data'}</div>
+      <div class="stat-grid">
+        <div class="stat-row">Points: ${formatMetric(latestRecent?.points as MetricValue)}</div>
+        <div class="stat-row">Opponent points: ${formatMetric(latestRecent?.pointsAgainst as MetricValue)}</div>
+        <div class="stat-row">Result: ${getResult(latestRecent as Record<string, unknown> | undefined)}</div>
+        <div class="stat-row">Shots: ${formatMetric(latestRecent?.shots as MetricValue)}</div>
+        <div class="stat-row">Hits: ${formatMetric(latestRecent?.hits as MetricValue)}</div>
+        <div class="stat-row">Precision: ${getPrecision(latestRecent as Record<string, unknown> | undefined)}</div>
+        <div class="stat-row">Damage: ${formatMetric(latestRecent?.damage as MetricValue)}</div>
+        <div class="stat-row">Damage / shot: ${getDamagePerShot(latestRecent as Record<string, unknown> | undefined)}</div>
+      </div>
+    </details>
+  `;
 }
 
 async function loadState(): Promise<ExtensionState> {
@@ -29,6 +116,8 @@ function render(state: ExtensionState) {
     sessionSummary.textContent = current ? `${current.status} (${current.clicks.length} clicks)` : 'None';
   }
 
+  renderOverview(state);
+
   if (!sessionsList) return;
   const sessions = state.sessions ?? [];
   if (!sessions.length) {
@@ -42,11 +131,30 @@ function render(state: ExtensionState) {
     card.className = 'session-card';
 
     const summary = document.createElement('div');
+    const recentStats = session.recentStatsAtEnd as Record<string, unknown> | undefined;
+    const startTime = toDisplayTime(session.startedAt);
+    const endTime = toDisplayTime(session.endedAt);
     summary.innerHTML = `
-      <strong>${session.status.toUpperCase()} • ${new Date(session.startedAt).toLocaleString()}</strong>
-      <div class="meta">Clicks: ${session.clicks.length} • Started: ${new Date(session.startedAt).toLocaleString()}</div>
-      <div class="meta">Stats at start: ${session.statsAtStart ? JSON.stringify(session.statsAtStart) : 'n/a'}</div>
-      <div class="meta">Recent stats at end: ${session.recentStatsAtEnd ? JSON.stringify(session.recentStatsAtEnd) : 'n/a'}</div>
+      <div class="overview-line">Time: ${startTime}</div>
+      <div class="meta">Start: ${startTime}</div>
+      <div class="meta">End: ${endTime || 'n/a'}</div>
+      <div class="meta">Length: ${recentStats?.time ? `${recentStats.time}` : 'n/a'}</div>
+      <div class="meta">Time Saved: ${recentStats?.timeSaved ?? 'n/a'}</div>
+      <div class="meta">Your Team's Points: ${recentStats?.points ?? 'n/a'}</div>
+      <div class="meta">Opponent's Points: ${recentStats?.pointsAgainst ?? 'n/a'}</div>
+      <div class="meta">Result: ${getResult(recentStats)}</div>
+      <div class="meta">Shots: ${recentStats?.shots ?? 'n/a'}</div>
+      <div class="meta">Hits: ${recentStats?.hits ?? 'n/a'}</div>
+      <div class="meta">Precision: ${getPrecision(recentStats)}</div>
+      <div class="meta">Damage: ${recentStats?.damage ?? 'n/a'}</div>
+      <div class="meta">Damage / shot: ${getDamagePerShot(recentStats)}</div>
+      <div class="meta">Bomber Kills: ${recentStats?.bombers ?? 'n/a'}</div>
+      <div class="meta">Scout Kills: ${recentStats?.scouts ?? 'n/a'}</div>
+      <div class="meta">Player Kills: ${recentStats?.kills ?? 'n/a'}</div>
+      <div class="meta">Player Deaths: ${recentStats?.deaths ?? 'n/a'}</div>
+      <div class="meta">Kills - Deaths: ${Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0)}</div>
+      <div class="meta">Total Score: ${recentStats?.score ?? 'n/a'}</div>
+      <div class="meta">Bonus: ${recentStats?.bonus ?? 'n/a'}</div>
     `;
 
     const details = document.createElement('details');
