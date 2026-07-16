@@ -40,16 +40,40 @@ function render(state: ExtensionState) {
   sessions.forEach((session) => {
     const card = document.createElement('div');
     card.className = 'session-card';
-    card.innerHTML = `
+
+    const summary = document.createElement('div');
+    summary.innerHTML = `
       <strong>${session.status.toUpperCase()} • ${new Date(session.startedAt).toLocaleString()}</strong>
       <div class="meta">Clicks: ${session.clicks.length} • Started: ${new Date(session.startedAt).toLocaleString()}</div>
       <div class="meta">Stats at start: ${session.statsAtStart ? JSON.stringify(session.statsAtStart) : 'n/a'}</div>
       <div class="meta">Recent stats at end: ${session.recentStatsAtEnd ? JSON.stringify(session.recentStatsAtEnd) : 'n/a'}</div>
     `;
+
+    const details = document.createElement('details');
+    const summaryEl = document.createElement('summary');
+    summaryEl.textContent = 'Show click locations';
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(
+      session.clicks.map((click) => ({
+        button: click.button,
+        x: click.x,
+        y: click.y,
+        rawPageX: click.pageX,
+        rawPageY: click.pageY,
+      })),
+      null,
+      2,
+    );
+    details.appendChild(summaryEl);
+    details.appendChild(pre);
+
     const deleteButton = document.createElement('button');
     deleteButton.textContent = 'Delete game';
     deleteButton.className = 'secondary';
     deleteButton.addEventListener('click', () => void deleteSession(session.id));
+
+    card.appendChild(summary);
+    card.appendChild(details);
     card.appendChild(deleteButton);
     sessionsList.appendChild(card);
   });

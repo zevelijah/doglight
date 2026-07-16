@@ -144,15 +144,15 @@ function captureSnapshot() {
 
 function recordClick(event: MouseEvent) {
   if (!activeSession) return;
-  const snapshot = snapshotLocalStorage();
-
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
 
   const click: ClickEvent = {
     id: uid(),
-    timestamp: snapshot.stats?.time ?? -1,
+    timestamp: Date.now(),
     button: event.button === 2 ? 'right' : 'left',
-    x: event.clientX,
-    y: event.clientY,
+    x: Math.round(event.clientX - centerX),
+    y: Math.round(event.clientY - centerY),
     pageX: event.pageX,
     pageY: event.pageY,
   };
