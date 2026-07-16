@@ -3,11 +3,17 @@
   "name": "DogLight",
   "version": "1.0.0",
   "permissions": [
-    "storage"
+    "storage",
+    "downloads",
+    "tabs"
   ],
   "background": {
     "service_worker": "src/background/background.ts",
     "type": "module"
+  },
+  "action": {
+    "default_title": "DogLight",
+    "default_popup": "src/viewer/viewer.html"
   },
   "content_scripts": [
     {

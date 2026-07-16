@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "DogLight",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "downloads",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "DogLight",
+    "default_popup": "src/viewer/viewer.html"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/content.ts-BfMLgzYw.js"
+      ],
+      "matches": [
+        "https://dogflight.io/*"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://dogflight.io/*"
+      ],
+      "resources": [
+        "assets/content.ts-BfMLgzYw.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}
