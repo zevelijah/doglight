@@ -1,1 +1,0 @@
-var e=`doglight_state`;function t(){chrome.storage.local.get([e],t=>{let n=t[e]??{},r={...n,sessions:n.sessions??[]};n.sessions||chrome.storage.local.set({[e]:r})})}t();
