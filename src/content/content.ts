@@ -8,6 +8,7 @@ interface RawStorageSnapshot {
   recentStats?: DogflightStats;
   firstPlay?: boolean;
   dogflightName?: string;
+  dogflightUid?: string;
 }
 
 let activeSession: GameSession | null = null;
@@ -109,6 +110,7 @@ function snapshotLocalStorage(): RawStorageSnapshot {
     recentStats: safeParse(raw.getItem('recentStats')) as DogflightStats | undefined,
     firstPlay: raw.getItem('firstPlay') === 'true' || raw.getItem('firstPlay') === 'false' ? raw.getItem('firstPlay') === 'true' : undefined,
     dogflightName: raw.getItem('dogflightName') ?? undefined,
+    dogflightUid: raw.getItem('dogflightUid') ?? undefined,
   };
 }
 
@@ -135,6 +137,7 @@ function captureSnapshot() {
     latestStats: snapshot.stats,
     latestRecentStats: snapshot.recentStats,
     latestName: snapshot.dogflightName,
+    latestUid: snapshot.dogflightUid,
     latestFirstPlay: snapshot.firstPlay,
   });
 
