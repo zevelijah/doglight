@@ -4,6 +4,8 @@ const STORAGE_KEY = 'doglight_state';
 
 type MetricValue = number | undefined;
 
+const isPopupView = new URLSearchParams(window.location.search).get('mode') === 'popup';
+
 function formatStats(value: Record<string, unknown> | undefined) {
   if (!value) return 'None';
   return `${value.score ?? 'n/a'} / ${value.kills ?? 'n/a'} kills / ${value.games ?? 'n/a'} games`;
@@ -59,7 +61,7 @@ function renderOverview(state: ExtensionState) {
     .join('   ');
 
   container.innerHTML = `
-    <details class="overview-details" open>
+    <details class="overview-details">
       <summary>Overall stats</summary>
       <div class="overview-line">${rankingText || 'No rankings yet'}     Games: ${totalGames}     Best: ${rankingText || 'n/a'}</div>
       <div class="stat-grid">
@@ -119,6 +121,11 @@ function render(state: ExtensionState) {
   renderOverview(state);
 
   if (!sessionsList) return;
+  if (isPopupView) {
+    sessionsList.innerHTML = '';
+    return;
+  }
+
   const sessions = state.sessions ?? [];
   if (!sessions.length) {
     sessionsList.innerHTML = '<p>No sessions recorded yet.</p>';
@@ -134,27 +141,45 @@ function render(state: ExtensionState) {
     const recentStats = session.recentStatsAtEnd as Record<string, unknown> | undefined;
     const startTime = toDisplayTime(session.startedAt);
     const endTime = toDisplayTime(session.endedAt);
+    const result = getResult(recentStats);
+    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : 'disconnect';
     summary.innerHTML = `
-      <div class="overview-line">Time: ${startTime}</div>
-      <div class="meta">Start: ${startTime}</div>
-      <div class="meta">End: ${endTime || 'n/a'}</div>
-      <div class="meta">Length: ${recentStats?.time ? `${recentStats.time}` : 'n/a'}</div>
-      <div class="meta">Time Saved: ${recentStats?.timeSaved ?? 'n/a'}</div>
-      <div class="meta">Your Team's Points: ${recentStats?.points ?? 'n/a'}</div>
-      <div class="meta">Opponent's Points: ${recentStats?.pointsAgainst ?? 'n/a'}</div>
-      <div class="meta">Result: ${getResult(recentStats)}</div>
-      <div class="meta">Shots: ${recentStats?.shots ?? 'n/a'}</div>
-      <div class="meta">Hits: ${recentStats?.hits ?? 'n/a'}</div>
-      <div class="meta">Precision: ${getPrecision(recentStats)}</div>
-      <div class="meta">Damage: ${recentStats?.damage ?? 'n/a'}</div>
-      <div class="meta">Damage / shot: ${getDamagePerShot(recentStats)}</div>
-      <div class="meta">Bomber Kills: ${recentStats?.bombers ?? 'n/a'}</div>
-      <div class="meta">Scout Kills: ${recentStats?.scouts ?? 'n/a'}</div>
-      <div class="meta">Player Kills: ${recentStats?.kills ?? 'n/a'}</div>
-      <div class="meta">Player Deaths: ${recentStats?.deaths ?? 'n/a'}</div>
-      <div class="meta">Kills - Deaths: ${Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0)}</div>
-      <div class="meta">Total Score: ${recentStats?.score ?? 'n/a'}</div>
-      <div class="meta">Bonus: ${recentStats?.bonus ?? 'n/a'}</div>
+      <div class="overview-line">Time: ${startTime}     Result: <span class="result-value ${resultClass}">${result}</div>
+      <details class="overview-details">
+        <summary>Show game stats</summary>
+        <div class="meta-group">
+          <div class="meta">Start: ${startTime}</div>
+          <div class="meta">End: ${endTime || 'n/a'}</div>
+          <div class="meta">Length: ${recentStats?.time ? `${recentStats.time}` : 'n/a'}</div>
+          <div class="meta">Time Saved: ${recentStats?.timeSaved ?? 'n/a'}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Your Team's Points: ${recentStats?.points ?? 'n/a'}</div>
+          <div class="meta">Opponent's Points: ${recentStats?.pointsAgainst ?? 'n/a'}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Shots: ${recentStats?.shots ?? 'n/a'}</div>
+          <div class="meta">Hits: ${recentStats?.hits ?? 'n/a'}</div>
+          <div class="meta">Precision: ${getPrecision(recentStats)}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Damage: ${recentStats?.damage ?? 'n/a'}</div>
+          <div class="meta">Damage / shot: ${getDamagePerShot(recentStats)}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Bomber Kills: ${recentStats?.bombers ?? 'n/a'}</div>
+          <div class="meta">Scout Kills: ${recentStats?.scouts ?? 'n/a'}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Player Kills: ${recentStats?.kills ?? 'n/a'}</div>
+          <div class="meta">Player Deaths: ${recentStats?.deaths ?? 'n/a'}</div>
+          <div class="meta">Kills - Deaths: ${Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0)}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Total Score: ${recentStats?.score ?? 'n/a'}</div>
+          <div class="meta">Bonus: ${recentStats?.bonus ?? 'n/a'}</div>
+        </div>
+      </details>
     `;
 
     const details = document.createElement('details');

@@ -13,7 +13,7 @@
   },
   "action": {
     "default_title": "DogLight",
-    "default_popup": "src/viewer/viewer.html"
+    "default_popup": "src/viewer/viewer.html?mode=popup"
   },
   "content_scripts": [
     {
