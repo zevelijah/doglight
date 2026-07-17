@@ -28,6 +28,13 @@ export interface ClickEvent {
   pageY: number;
 }
 
+export interface SessionDevEvent {
+  timestamp: number;
+  type: 'connect' | 'disconnect' | 'non-disconnect';
+  detectedBy: 'message' | 'listener' | 'game-count-change';
+  details?: string;
+}
+
 export interface GameSession {
   id: string;
   startedAt: number;
@@ -38,7 +45,9 @@ export interface GameSession {
   recentStatsAtStart?: DogflightStats;
   recentStatsAtEnd?: DogflightStats;
   clicks: ClickEvent[];
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> & {
+    devEvents?: SessionDevEvent[];
+  };
 }
 
 export interface ExtensionState {

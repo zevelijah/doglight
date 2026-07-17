@@ -23,9 +23,14 @@ function formatMetric(value: MetricValue) {
 function getResult(recentStats: Record<string, unknown> | undefined) {
   const points = Number(recentStats?.points ?? 0);
   const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
-  if (points === 100) return 'Won';
-  if (pointsAgainst === 100) return 'Lost';
-  return 'Disconnected';
+  const time = Number(recentStats?.time ?? 0);
+  const shots = Number(recentStats?.shots ?? 0);
+  if (points != 100 && pointsAgainst  != 100 && (time < 1198 || shots === 0)) return 'Disconnected'; //detecing timeout or long period without shots will improve accuracy eventually
+  if (points === pointsAgainst) {  
+    return 'Tied';
+  }
+  if (points > pointsAgainst) return 'Won';
+  if (points < pointsAgainst) return 'Lost';
 }
 
 function getPrecision(recentStats: Record<string, unknown> | undefined) {
@@ -150,7 +155,7 @@ function render(state: ExtensionState) {
     const startTime = toDisplayTime(session.startedAt);
     const endTime = toDisplayTime(session.endedAt);
     const result = getResult(recentStats);
-    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : 'disconnect';
+    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : result === 'Tied' ? 'tie' : 'disconnect';  
     const sessionName = (session.metadata?.dogflightName as string | undefined) ?? 'Unknown';
     const sessionUid = (session.metadata?.dogflightUid as string | undefined) ?? 'Unknown';
     summary.innerHTML = `
@@ -214,6 +219,23 @@ function render(state: ExtensionState) {
     details.appendChild(summaryEl);
     details.appendChild(pre);
 
+    const devDetails = document.createElement('details');
+    const devSummary = document.createElement('summary');
+    devSummary.textContent = 'Dev mode';
+    const devPre = document.createElement('pre');
+    const devEvents = (session.metadata?.devEvents as Array<{ timestamp: number; type: string; detectedBy: string; details?: string }> | undefined) ?? [];
+    devPre.textContent = devEvents.length
+      ? devEvents
+          .map((event) => {
+            const time = toDisplayTime(event.timestamp);
+            const details = event.details ? ` (${event.details})` : '';
+            return `${event.type.toUpperCase()} @ ${time} via ${event.detectedBy}${details}`;
+          })
+          .join('\n')
+      : 'No dev events recorded.';
+    devDetails.appendChild(devSummary);
+    devDetails.appendChild(devPre);
+
     const deleteButton = document.createElement('button');
     deleteButton.textContent = 'Delete game';
     deleteButton.className = 'secondary';
@@ -221,6 +243,7 @@ function render(state: ExtensionState) {
 
     card.appendChild(summary);
     card.appendChild(details);
+    card.appendChild(devDetails);
     card.appendChild(deleteButton);
     sessionsList.appendChild(card);
   });

@@ -2,6 +2,12 @@
 
 Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
+### Use
+
+#### Bugs
+
+- When you play for red team the scores are reversed. It is possible that other records break as well.
+
 ### Installing
 
 Once you have cloned the repo:
@@ -21,7 +27,7 @@ npm run build
 This creates a `dist` folder that acts tha actual extension that the browser will see. This is nesscesary because we are using typescript. To start up the the extension server:
 
 ```bash
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
 If you are doing this for the first time, go to `chrome://extensions` in chrome or chromium and activate developer mode in the top right. Then, press "load unpacked" in the top left and select the generated `dist` folder. You should see a new extension pop up.
