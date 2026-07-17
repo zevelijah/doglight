@@ -6,7 +6,6 @@ const DOGFLIGHT_ORIGIN = 'https://dogflight.io';
 interface RawStorageSnapshot {
   stats?: DogflightStats;
   recentStats?: DogflightStats;
-  firstPlay?: boolean;
   dogflightName?: string;
   dogflightUid?: string;
 }
@@ -40,6 +39,13 @@ function startSession(snapshot: RawStorageSnapshot) {
   if (snapshot.recentStats) {
     activeSession.recentStatsAtStart = snapshot.recentStats;
   }
+  activeSession.metadata = {
+    ...(activeSession.metadata ?? {}),
+    dogflightName: snapshot.dogflightName,
+    dogflightUid: snapshot.dogflightUid,
+    origin: window.location.origin,
+    url: window.location.href,
+  };
   persistState({ currentSession: activeSession });
 }
 
@@ -84,7 +90,7 @@ function loadState(callback: (state: ExtensionState) => void) {
       latestStats: state.latestStats,
       latestRecentStats: state.latestRecentStats,
       latestName: state.latestName,
-      latestFirstPlay: state.latestFirstPlay,
+      latestUid: state.latestUid,
       lastUpdated: state.lastUpdated,
     };
     callback(normalized);
@@ -108,9 +114,8 @@ function snapshotLocalStorage(): RawStorageSnapshot {
   return {
     stats: safeParse(raw.getItem('stats')) as DogflightStats | undefined,
     recentStats: safeParse(raw.getItem('recentStats')) as DogflightStats | undefined,
-    firstPlay: raw.getItem('firstPlay') === 'true' || raw.getItem('firstPlay') === 'false' ? raw.getItem('firstPlay') === 'true' : undefined,
     dogflightName: raw.getItem('dogflightName') ?? undefined,
-    dogflightUid: raw.getItem('dogflightUid') ?? undefined,
+    dogflightUid: raw.getItem('dogflightUID') ?? undefined,
   };
 }
 
@@ -138,7 +143,6 @@ function captureSnapshot() {
     latestRecentStats: snapshot.recentStats,
     latestName: snapshot.dogflightName,
     latestUid: snapshot.dogflightUid,
-    latestFirstPlay: snapshot.firstPlay,
   });
 
   maybeAdvanceGameState(snapshot);
