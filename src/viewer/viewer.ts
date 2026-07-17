@@ -219,6 +219,23 @@ function render(state: ExtensionState) {
     details.appendChild(summaryEl);
     details.appendChild(pre);
 
+    const devDetails = document.createElement('details');
+    const devSummary = document.createElement('summary');
+    devSummary.textContent = 'Dev mode';
+    const devPre = document.createElement('pre');
+    const devEvents = (session.metadata?.devEvents as Array<{ timestamp: number; type: string; detectedBy: string; details?: string }> | undefined) ?? [];
+    devPre.textContent = devEvents.length
+      ? devEvents
+          .map((event) => {
+            const time = toDisplayTime(event.timestamp);
+            const details = event.details ? ` (${event.details})` : '';
+            return `${event.type.toUpperCase()} @ ${time} via ${event.detectedBy}${details}`;
+          })
+          .join('\n')
+      : 'No dev events recorded.';
+    devDetails.appendChild(devSummary);
+    devDetails.appendChild(devPre);
+
     const deleteButton = document.createElement('button');
     deleteButton.textContent = 'Delete game';
     deleteButton.className = 'secondary';
@@ -226,6 +243,7 @@ function render(state: ExtensionState) {
 
     card.appendChild(summary);
     card.appendChild(details);
+    card.appendChild(devDetails);
     card.appendChild(deleteButton);
     sessionsList.appendChild(card);
   });

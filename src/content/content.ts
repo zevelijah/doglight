@@ -1,4 +1,4 @@
-import type { ClickEvent, DogflightStats, ExtensionState, GameSession } from '../shared/types';
+import type { ClickEvent, DogflightStats, ExtensionState, GameSession, SessionDevEvent } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
 const DOGFLIGHT_ORIGIN = 'https://dogflight.io';
@@ -13,6 +13,8 @@ interface RawStorageSnapshot {
 let activeSession: GameSession | null = null;
 let lastKnownSnapshot: RawStorageSnapshot = {};
 let lastKnownGameCount: number | null = null;
+
+type DetectionMethod = 'message' | 'listener' | 'game-count-change';
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -31,7 +33,22 @@ function buildSession(): GameSession {
   };
 }
 
-function startSession(snapshot: RawStorageSnapshot) {
+function appendDevEvent(session: GameSession | null, type: SessionDevEvent['type'], detectedBy: DetectionMethod, details?: string) {
+  if (!session) return;
+  const existingEvents = (session.metadata?.devEvents as SessionDevEvent[] | undefined) ?? [];
+  const nextEvents = [...existingEvents, {
+    timestamp: Date.now(),
+    type,
+    detectedBy,
+    details,
+  }];
+  session.metadata = {
+    ...(session.metadata ?? {}),
+    devEvents: nextEvents,
+  };
+}
+
+function startSession(snapshot: RawStorageSnapshot, detectedBy: DetectionMethod = 'message', details?: string) {
   activeSession = buildSession();
   if (snapshot.stats) {
     activeSession.statsAtStart = snapshot.stats;
@@ -46,6 +63,7 @@ function startSession(snapshot: RawStorageSnapshot) {
     origin: window.location.origin,
     url: window.location.href,
   };
+  appendDevEvent(activeSession, 'connect', detectedBy, details);
   persistState({ currentSession: activeSession });
 }
 
@@ -73,9 +91,9 @@ function maybeAdvanceGameState(snapshot: RawStorageSnapshot) {
 
   if (currentGames > lastKnownGameCount) {
     if (activeSession) {
-      finalizeActiveSession();
+      finalizeActiveSession('game-count-change', 'game count increased');
     }
-    startSession(snapshot);
+    startSession(snapshot, 'game-count-change', 'game count increased');
   }
 
   lastKnownGameCount = currentGames;
@@ -167,8 +185,12 @@ function recordClick(event: MouseEvent) {
   persistState({ currentSession: activeSession });
 }
 
-function finalizeActiveSession() {
-  if (!activeSession) return;
+function finalizeActiveSession(detectedBy: DetectionMethod = 'listener', details?: string) {
+  if (!activeSession) {
+    appendDevEvent(activeSession, 'non-disconnect', detectedBy, details);
+    return;
+  }
+  appendDevEvent(activeSession, 'disconnect', detectedBy, details);
   const sessionToSave = activeSession;
   sessionToSave.endedAt = Date.now();
   sessionToSave.status = 'ended';
@@ -190,34 +212,33 @@ function finalizeActiveSession() {
   activeSession = null;
 }
 
-function handleMessage(message: string) {
-  if (message.includes('Connected to DogFlight room')) {
-    const snapshot = snapshotLocalStorage();
-    startSession(snapshot);
-    return;
-  }
+// function handleMessage(message: string) {
+//   if (message.includes('Connected to DogFlight room')) {
+//     const snapshot = snapshotLocalStorage();
+//     startSession(snapshot, 'message', 'console message');
+//     return;
+//   }
 
-  if (message.includes('Disconnected')) {
-    console.log('DogLight: Disconnection Dectector Works!');
-    finalizeActiveSession();
-  }
-}
+//   if (message.includes('Disconnected')) {
+//     finalizeActiveSession('message', 'console message');
+//   }
+// }
 
-function attachConsoleCapture() {
-  const originalLog = console.log;
-  console.log = (...args: unknown[]) => {
-    const message = args.map((arg) => String(arg)).join(' ');
-    handleMessage(message);
-    return originalLog.apply(console, args);
-  };
-}
+// function attachConsoleCapture() {
+//   const originalLog = console.log;
+//   console.log = (...args: unknown[]) => {
+//     const message = args.map((arg) => String(arg)).join(' ');
+//     handleMessage(message);
+//     return originalLog.apply(console, args);
+//   };
+// }
 
 function initialize() {
   if (!window.location.origin.startsWith(DOGFLIGHT_ORIGIN)) return;
-  attachConsoleCapture();
+//   attachConsoleCapture();
   document.addEventListener('click', recordClick, true);
   window.addEventListener('storage', captureSnapshot);
-  window.addEventListener('beforeunload', finalizeActiveSession);
+  window.addEventListener('beforeunload', () => finalizeActiveSession('listener', 'page unload'));
   setInterval(captureSnapshot, 1000);
   captureSnapshot();
 }
