@@ -23,9 +23,14 @@ function formatMetric(value: MetricValue) {
 function getResult(recentStats: Record<string, unknown> | undefined) {
   const points = Number(recentStats?.points ?? 0);
   const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
-  if (points === 100) return 'Won';
-  if (pointsAgainst === 100) return 'Lost';
-  return 'Disconnected';
+  if (points === pointsAgainst) {
+    const time = Number(recentStats?.time ?? 0);
+    const shots = Number(recentStats?.shots ?? 0);
+    if (points === 0 && pointsAgainst === 0 && (time < 1188 || shots === 0)) return 'Disconnected';
+    return 'Tied';
+  }
+  if (points > pointsAgainst) return 'Won';
+  if (points < pointsAgainst) return 'Lost';
 }
 
 function getPrecision(recentStats: Record<string, unknown> | undefined) {
@@ -150,7 +155,7 @@ function render(state: ExtensionState) {
     const startTime = toDisplayTime(session.startedAt);
     const endTime = toDisplayTime(session.endedAt);
     const result = getResult(recentStats);
-    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : 'disconnect';
+    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : result === 'Tied' ? 'tie' : 'disconnect';  
     const sessionName = (session.metadata?.dogflightName as string | undefined) ?? 'Unknown';
     const sessionUid = (session.metadata?.dogflightUid as string | undefined) ?? 'Unknown';
     summary.innerHTML = `

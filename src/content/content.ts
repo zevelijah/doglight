@@ -198,6 +198,7 @@ function handleMessage(message: string) {
   }
 
   if (message.includes('Disconnected')) {
+    console.log('DogLight: Disconnection Dectector Works!');
     finalizeActiveSession();
   }
 }

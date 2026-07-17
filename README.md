@@ -2,6 +2,12 @@
 
 Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
+### Use
+
+#### Bugs
+
+- When you play for red team the scores are reversed. It is possible that other records break as well.
+
 ### Installing
 
 Once you have cloned the repo:
