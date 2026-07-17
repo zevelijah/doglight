@@ -23,10 +23,10 @@ function formatMetric(value: MetricValue) {
 function getResult(recentStats: Record<string, unknown> | undefined) {
   const points = Number(recentStats?.points ?? 0);
   const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
-  if (points === pointsAgainst) {
-    const time = Number(recentStats?.time ?? 0);
-    const shots = Number(recentStats?.shots ?? 0);
-    if (points === 0 && pointsAgainst === 0 && (time < 1188 || shots === 0)) return 'Disconnected';
+  const time = Number(recentStats?.ime ?? 0);
+  const shots = Number(recentStats?.shots ?? 0);
+  if (points != 100 && pointsAgainst  != 100 && (time < 1198 || shots === 0)) return 'Disconnected'; //detecing timeout or long period without shots will improve accuracy eventually
+  if (points === pointsAgainst) {  
     return 'Tied';
   }
   if (points > pointsAgainst) return 'Won';
