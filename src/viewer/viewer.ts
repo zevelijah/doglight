@@ -46,6 +46,11 @@ function renderOverview(state: ExtensionState) {
   const container = document.getElementById('overviewContainer');
   if (!container) return;
 
+  const openFullPageButton = document.getElementById('openFullPage');
+  if (openFullPageButton) {
+    openFullPageButton.hidden = !isPopupView;
+  }
+
   const allTimeStats = state.latestStats as Record<string, unknown> | undefined;
   const latestRecent = state.latestRecentStats as Record<string, unknown> | undefined;
   const totalGames = Number(allTimeStats?.games ?? 0);
@@ -109,6 +114,7 @@ function render(state: ExtensionState) {
   const statsSummary = document.getElementById('statsSummary');
   const recentSummary = document.getElementById('recentSummary');
   const sessionSummary = document.getElementById('sessionSummary');
+  const sessionsSection = document.getElementById('sessionsSection');
   const sessionsList = document.getElementById('sessionsList');
 
   if (statsSummary) statsSummary.textContent = formatStats(state.latestStats as Record<string, unknown> | undefined);
@@ -120,12 +126,14 @@ function render(state: ExtensionState) {
 
   renderOverview(state);
 
-  if (!sessionsList) return;
+  if (!sessionsSection || !sessionsList) return;
   if (isPopupView) {
-    sessionsList.innerHTML = '';
+    sessionsSection.hidden = true;
+    sessionsList.innerHTML = 'Loading…';
     return;
   }
 
+  sessionsSection.hidden = false;
   const sessions = state.sessions ?? [];
   if (!sessions.length) {
     sessionsList.innerHTML = '<p>No sessions recorded yet.</p>';
