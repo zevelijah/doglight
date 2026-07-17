@@ -16,11 +16,22 @@
       h1 { font-size: 18px; margin: 0 0 12px; }
       h2 { font-size: 15px; margin: 0 0 8px; }
       .row { margin-bottom: 8px; }
-      button { margin-top: 8px; padding: 8px 10px; border: none; border-radius: 6px; cursor: pointer; background: #2563eb; color: white; }
+      button { margin-top: 8px; padding: 8px 10px; border: none; border-radius: 6px; cursor: pointer; background: #2563eb; color: white; transition: transform 120ms ease, box-shadow 120ms ease; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+      button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+      button:active { transform: scale(0.97); }
       button.secondary { background: #374151; }
       .panel { background: #1f2937; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
       .session-card { background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
       .session-card .meta { color: #9ca3af; font-size: 12px; margin-top: 6px; }
+      .session-card .meta-group { margin-top: 12px; }
+      .overview-line { white-space: pre-wrap; margin-top: 10px; color: #d1d5db; }
+      .overview-details { margin-top: 10px; }
+      .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; margin-top: 8px; }
+      .stat-row { background: #1f2937; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+      .result-value { font-weight: 700; }
+      .result-value.win { color: #4ade80; }
+      .result-value.loss { color: #f87171; }
+      .result-value.disconnect { color: #facc15; }
       details { margin-top: 8px; }
       summary { cursor: pointer; color: #93c5fd; }
       pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin-top: 6px; }
@@ -32,11 +43,12 @@
       <div class="row">Latest stats: <span id="statsSummary">None yet</span></div>
       <div class="row">Latest recent stats: <span id="recentSummary">None yet</span></div>
       <div class="row">Active session: <span id="sessionSummary">None</span></div>
+      <div id="overviewContainer"></div>
       <button id="refresh">Refresh</button>
       <button id="export" class="secondary">Export JSON</button>
-      <button id="openFullPage" class="secondary">Open full viewer</button>
+      <button id="openFullPage" class="secondary" hidden>Open full viewer</button>
     </div>
-    <div class="panel">
+    <div id="sessionsSection" class="panel" hidden>
       <h2>Saved game sessions</h2>
       <div id="sessionsList">Loading…</div>
     </div>
