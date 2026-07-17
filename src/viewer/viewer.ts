@@ -151,10 +151,16 @@ function render(state: ExtensionState) {
     const endTime = toDisplayTime(session.endedAt);
     const result = getResult(recentStats);
     const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : 'disconnect';
+    const sessionName = (session.metadata?.dogflightName as string | undefined) ?? 'Unknown';
+    const sessionUid = (session.metadata?.dogflightUid as string | undefined) ?? 'Unknown';
     summary.innerHTML = `
-      <div class="overview-line">Time: ${startTime}     Result: <span class="result-value ${resultClass}">${result}</div>
+      Time: ${startTime}     Result: <span class="result-value ${resultClass}">${result}</span></div>
       <details class="overview-details">
         <summary>Show game stats</summary>
+        <div class="meta-group">
+          <div class="meta">Name: ${sessionName}</div>
+          <div class="meta">UID: ${sessionUid}</div
+        </div>  
         <div class="meta-group">
           <div class="meta">Start: ${startTime}</div>
           <div class="meta">End: ${endTime || 'n/a'}</div>

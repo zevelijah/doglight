@@ -48,6 +48,5 @@ export interface ExtensionState {
   latestRecentStats?: DogflightStats;
   latestName?: string;
   latestUid?: string;
-  latestFirstPlay?: boolean;
   lastUpdated?: number;
 }
