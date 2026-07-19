@@ -35,6 +35,34 @@ export interface SessionDevEvent {
   details?: string;
 }
 
+export interface ShotBurstEvent {
+  id: string;
+  timestamp: number;
+  type: 'right-click' | 'shots-increase' | 'hits-increase' | 'bomber-kill' | 'scout-kill' | 'player-kill';
+  message?: string;
+  x?: number;
+  y?: number;
+  pageX?: number;
+  pageY?: number;
+}
+
+export interface ShotBurst {
+  id: string;
+  startedAt: number;
+  endedAt?: number;
+  startedShots?: number;
+  startedHits?: number;
+  events: ShotBurstEvent[];
+}
+
+export interface GameBonusEntry {
+  id: string;
+  timestamp: number;
+  message: string;
+  source: 'live' | 'finalization';
+  amount?: number;
+}
+
 export interface GameSession {
   id: string;
   startedAt: number;
@@ -47,6 +75,11 @@ export interface GameSession {
   clicks: ClickEvent[];
   metadata?: Record<string, unknown> & {
     devEvents?: SessionDevEvent[];
+    shotBursts?: ShotBurst[];
+    gameBonuses?: GameBonusEntry[];
+    leftClicks?: ClickEvent[];
+    team?: 'green' | 'red';
+    lastTrackedBonus?: number;
   };
 }
 

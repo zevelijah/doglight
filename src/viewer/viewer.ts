@@ -1,4 +1,4 @@
-import type { ExtensionState, GameSession } from '../shared/types';
+import type { ExtensionState, GameSession, GameBonusEntry, ClickEvent, ShotBurst, ShotBurstEvent } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
 
@@ -20,17 +20,30 @@ function formatMetric(value: MetricValue) {
   return typeof value === 'number' ? value.toString() : 'n/a';
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function getResult(recentStats: Record<string, unknown> | undefined) {
   const points = Number(recentStats?.points ?? 0);
   const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
   const time = Number(recentStats?.time ?? 0);
   const shots = Number(recentStats?.shots ?? 0);
-  if (points != 100 && pointsAgainst  != 100 && (time < 1198 || shots === 0)) return 'Disconnected'; //detecing timeout or long period without shots will improve accuracy eventually
-  if (points === pointsAgainst) {  
-    return 'Tied';
-  }
+  if (points !== 100 && pointsAgainst !== 100 && (time < 1198 || shots === 0)) return 'Disconnected';
+  if (points === pointsAgainst) return 'Tied';
   if (points > pointsAgainst) return 'Won';
   if (points < pointsAgainst) return 'Lost';
+}
+
+function getSessionResult(session: GameSession, recentStats: Record<string, unknown> | undefined) {
+  const result = getResult(recentStats);
+  if (result === 'Won' && session.metadata?.team === 'red') return 'Lost';
+  if (result === 'Lost' && session.metadata?.team === 'red') return 'Won';
+  return result;
 }
 
 function getPrecision(recentStats: Record<string, unknown> | undefined) {
@@ -154,49 +167,66 @@ function render(state: ExtensionState) {
     const recentStats = session.recentStatsAtEnd as Record<string, unknown> | undefined;
     const startTime = toDisplayTime(session.startedAt);
     const endTime = toDisplayTime(session.endedAt);
-    const result = getResult(recentStats);
-    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : result === 'Tied' ? 'tie' : 'disconnect';  
-    const sessionName = (session.metadata?.dogflightName as string | undefined) ?? 'Unknown';
-    const sessionUid = (session.metadata?.dogflightUid as string | undefined) ?? 'Unknown';
+    const result = getSessionResult(session, recentStats);
+    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : result === 'Tied' ? 'tie' : 'disconnect';
+    const sessionName = escapeHtml((session.metadata?.dogflightName as string | undefined) ?? 'Unknown');
+    const sessionUid = escapeHtml((session.metadata?.dogflightUid as string | undefined) ?? 'Unknown');
+    const teamLabel = escapeHtml((session.metadata?.team as 'green' | 'red' | undefined) ?? 'green');
+    const shotBursts = (session.metadata?.shotBursts as ShotBurst[] | undefined) ?? [];
+    const gameBonuses = (session.metadata?.gameBonuses as GameBonusEntry[] | undefined) ?? [];
+    const leftClicks = (session.metadata?.leftClicks as ClickEvent[] | undefined) ?? [];
+    const guidedScouts = gameBonuses.filter((entry) => entry.message.includes('scouts guided')).reduce((total, entry) => total + Number(entry.amount ?? 0) / 2000, 0);
+    const guidedBombers = gameBonuses.filter((entry) => entry.message.includes('bomber') && entry.message.includes('guided')).length;
+    const bonusSummary = gameBonuses.filter((entry) => entry.message.includes('game bonuses') || entry.message.includes('performance bonus')).map((entry) => `${escapeHtml(entry.message)} (${entry.amount ?? 'n/a'})`).join('<br/>');
+
     summary.innerHTML = `
-      Time: ${startTime}     Result: <span class="result-value ${resultClass}">${result}</span></div>
+      <div>Time: ${escapeHtml(startTime)}     Result: <span class="result-value ${resultClass}">${escapeHtml(result)}</span></div>
       <details class="overview-details">
         <summary>Show game stats</summary>
         <div class="meta-group">
           <div class="meta">Name: ${sessionName}</div>
-          <div class="meta">UID: ${sessionUid}</div
-        </div>  
-        <div class="meta-group">
-          <div class="meta">Start: ${startTime}</div>
-          <div class="meta">End: ${endTime || 'n/a'}</div>
-          <div class="meta">Length: ${recentStats?.time ? `${recentStats.time}` : 'n/a'}</div>
-          <div class="meta">Time Saved: ${recentStats?.timeSaved ?? 'n/a'}</div>
+          <div class="meta">UID: ${sessionUid}</div>
+          <div class="meta">Team: ${teamLabel}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Your Team's Points: ${recentStats?.points ?? 'n/a'}</div>
-          <div class="meta">Opponent's Points: ${recentStats?.pointsAgainst ?? 'n/a'}</div>
+          <div class="meta">Start: ${escapeHtml(startTime)}</div>
+          <div class="meta">End: ${escapeHtml(endTime || 'n/a')}</div>
+          <div class="meta">Length: ${escapeHtml(recentStats?.time ? `${recentStats.time}` : 'n/a')}</div>
+          <div class="meta">Time Saved: ${escapeHtml(recentStats?.timeSaved ?? 'n/a')}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Shots: ${recentStats?.shots ?? 'n/a'}</div>
-          <div class="meta">Hits: ${recentStats?.hits ?? 'n/a'}</div>
-          <div class="meta">Precision: ${getPrecision(recentStats)}</div>
+          <div class="meta">Your Team's Points: ${escapeHtml(recentStats?.points ?? 'n/a')}</div>
+          <div class="meta">Opponent's Points: ${escapeHtml(recentStats?.pointsAgainst ?? 'n/a')}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Damage: ${recentStats?.damage ?? 'n/a'}</div>
-          <div class="meta">Damage / shot: ${getDamagePerShot(recentStats)}</div>
+          <div class="meta">Shots: ${escapeHtml(recentStats?.shots ?? 'n/a')}</div>
+          <div class="meta">Hits: ${escapeHtml(recentStats?.hits ?? 'n/a')}</div>
+          <div class="meta">Precision: ${escapeHtml(getPrecision(recentStats))}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Bomber Kills: ${recentStats?.bombers ?? 'n/a'}</div>
-          <div class="meta">Scout Kills: ${recentStats?.scouts ?? 'n/a'}</div>
+          <div class="meta">Damage: ${escapeHtml(recentStats?.damage ?? 'n/a')}</div>
+          <div class="meta">Damage / shot: ${escapeHtml(getDamagePerShot(recentStats))}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Player Kills: ${recentStats?.kills ?? 'n/a'}</div>
-          <div class="meta">Player Deaths: ${recentStats?.deaths ?? 'n/a'}</div>
-          <div class="meta">Kills - Deaths: ${Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0)}</div>
+          <div class="meta">Bomber Kills: ${escapeHtml(recentStats?.bombers ?? 'n/a')}</div>
+          <div class="meta">Scout Kills: ${escapeHtml(recentStats?.scouts ?? 'n/a')}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Total Score: ${recentStats?.score ?? 'n/a'}</div>
-          <div class="meta">Bonus: ${recentStats?.bonus ?? 'n/a'}</div>
+          <div class="meta">Player Kills: ${escapeHtml(recentStats?.kills ?? 'n/a')}</div>
+          <div class="meta">Player Deaths: ${escapeHtml(recentStats?.deaths ?? 'n/a')}</div>
+          <div class="meta">Kills - Deaths: ${escapeHtml(Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0))}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Total Score: ${escapeHtml(recentStats?.score ?? 'n/a')}</div>
+          <div class="meta">Bonus: ${escapeHtml(recentStats?.bonus ?? 'n/a')}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Bombers guided: ${escapeHtml(guidedBombers)}</div>
+          <div class="meta">Scouts guided: ${escapeHtml(guidedScouts.toFixed(0))}</div>
+        </div>
+        <div class="meta-group">
+          <div class="meta">Game bonuses earned</div>
+          <div class="meta">${bonusSummary || 'No bonus entries recorded.'}</div>
         </div>
       </details>
     `;
@@ -218,6 +248,41 @@ function render(state: ExtensionState) {
     );
     details.appendChild(summaryEl);
     details.appendChild(pre);
+
+    const shotBurstDetails = document.createElement('details');
+    const shotBurstSummary = document.createElement('summary');
+    shotBurstSummary.textContent = 'Shot bursts';
+    const shotBurstPre = document.createElement('pre');
+    shotBurstPre.textContent = shotBursts.length
+      ? shotBursts
+          .map((burst, index) => {
+            const events = burst.events.map((event) => `${toDisplayTime(event.timestamp)} :: ${event.type} :: ${event.message ?? 'n/a'}`).join('\n');
+            return `Burst ${index + 1}\n${events}`;
+          })
+          .join('\n\n')
+      : 'No shot bursts recorded.';
+    shotBurstDetails.appendChild(shotBurstSummary);
+    shotBurstDetails.appendChild(shotBurstPre);
+
+    const leftClicksDetails = document.createElement('details');
+    const leftClicksSummary = document.createElement('summary');
+    leftClicksSummary.textContent = 'Left clicks';
+    const leftClicksPre = document.createElement('pre');
+    leftClicksPre.textContent = leftClicks.length
+      ? JSON.stringify(
+          leftClicks.map((click) => ({
+            timestamp: toDisplayTime(click.timestamp),
+            x: click.x,
+            y: click.y,
+            pageX: click.pageX,
+            pageY: click.pageY,
+          })),
+          null,
+          2,
+        )
+      : 'No left clicks recorded.';
+    leftClicksDetails.appendChild(leftClicksSummary);
+    leftClicksDetails.appendChild(leftClicksPre);
 
     const devDetails = document.createElement('details');
     const devSummary = document.createElement('summary');
@@ -243,6 +308,8 @@ function render(state: ExtensionState) {
 
     card.appendChild(summary);
     card.appendChild(details);
+    card.appendChild(shotBurstDetails);
+    card.appendChild(leftClicksDetails);
     card.appendChild(devDetails);
     card.appendChild(deleteButton);
     sessionsList.appendChild(card);
