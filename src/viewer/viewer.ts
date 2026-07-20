@@ -177,7 +177,7 @@ function render(state: ExtensionState) {
     const leftClicks = (session.metadata?.leftClicks as ClickEvent[] | undefined) ?? [];
     const guidedScouts = gameBonuses.filter((entry) => entry.message.includes('scouts guided')).reduce((total, entry) => total + Number(entry.amount ?? 0) / 2000, 0);
     const guidedBombers = gameBonuses.filter((entry) => entry.message.includes('bomber') && entry.message.includes('guided')).length;
-    const bonusSummary = gameBonuses.filter((entry) => entry.message.includes('game bonuses') || entry.message.includes('performance bonus')).map((entry) => `${escapeHtml(entry.message)} (${entry.amount ?? 'n/a'})`).join('<br/>');
+    const bothBonusSummary = gameBonuses.filter((entry) => entry.message.includes('game bonuses') || entry.message.includes('performance bonus')).map((entry) => `${escapeHtml(entry.message)} (${entry.amount ?? 'n/a'})`).join('<br/>');
 
     summary.innerHTML = `
       <div>Time: ${escapeHtml(startTime)}     Result: <span class="result-value ${resultClass}">${escapeHtml(result)}</span></div>
@@ -225,29 +225,10 @@ function render(state: ExtensionState) {
           <div class="meta">Scouts guided: ${escapeHtml(guidedScouts.toFixed(0))}</div>
         </div>
         <div class="meta-group">
-          <div class="meta">Game bonuses earned</div>
-          <div class="meta">${bonusSummary || 'No bonus entries recorded.'}</div>
+          <div class="meta">${bothBonusSummary || 'No bonus entries recorded.'}</div>
         </div>
       </details>
     `;
-
-    const details = document.createElement('details');
-    const summaryEl = document.createElement('summary');
-    summaryEl.textContent = 'Show click locations';
-    const pre = document.createElement('pre');
-    pre.textContent = JSON.stringify(
-      session.clicks.map((click) => ({
-        button: click.button,
-        x: click.x,
-        y: click.y,
-        rawPageX: click.pageX,
-        rawPageY: click.pageY,
-      })),
-      null,
-      2,
-    );
-    details.appendChild(summaryEl);
-    details.appendChild(pre);
 
     const shotBurstDetails = document.createElement('details');
     const shotBurstSummary = document.createElement('summary');
@@ -257,7 +238,7 @@ function render(state: ExtensionState) {
       ? shotBursts
           .map((burst, index) => {
             const events = burst.events.map((event) => `${toDisplayTime(event.timestamp)} :: ${event.type} :: ${event.message ?? 'n/a'}`).join('\n');
-            return `Burst ${index + 1}\n${events}`;
+            return `Burst ${index + 1} ${escapeHtml((burst.x !== undefined ? `(Coords.: ${burst.x}, ${burst.y})` : 'n/a'))}\n${events}`;
           })
           .join('\n\n')
       : 'No shot bursts recorded.';
@@ -284,6 +265,25 @@ function render(state: ExtensionState) {
     leftClicksDetails.appendChild(leftClicksSummary);
     leftClicksDetails.appendChild(leftClicksPre);
 
+    const bonusDetails = document.createElement('details');
+    const bonusSummary = document.createElement('summary');
+    bonusSummary.textContent = 'Game bonuses';
+    const bonusPre = document.createElement('pre');
+    bonusPre.textContent = gameBonuses.length
+      ? JSON.stringify(
+          gameBonuses.map((bonus) => ({
+            timestamp: toDisplayTime(bonus.timestamp),
+            message: bonus.message,
+            source: bonus.source,
+            amount: bonus.amount ?? 'n/a',
+          })),
+          null,
+          2,
+        )
+      : 'No game bonuses recorded.';
+    bonusDetails.appendChild(bonusSummary);
+    bonusDetails.appendChild(bonusPre);
+
     const devDetails = document.createElement('details');
     const devSummary = document.createElement('summary');
     devSummary.textContent = 'Dev mode';
@@ -307,8 +307,8 @@ function render(state: ExtensionState) {
     deleteButton.addEventListener('click', () => void deleteSession(session.id));
 
     card.appendChild(summary);
-    card.appendChild(details);
     card.appendChild(shotBurstDetails);
+    card.appendChild(bonusDetails);
     card.appendChild(leftClicksDetails);
     card.appendChild(devDetails);
     card.appendChild(deleteButton);

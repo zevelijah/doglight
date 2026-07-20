@@ -107,26 +107,30 @@ function finalizeCurrentShotBurst(session: GameSession | null) {
 function beginNewShotBurst(session: GameSession | null, snapshot: RawStorageSnapshot) {
   if (!session) return;
   finalizeCurrentShotBurst(session);
-  const burst: ShotBurst = {
-    id: uid(),
-    startedAt: Date.now(),
-    startedShots: snapshot.recentStats?.shots,
-    startedHits: snapshot.recentStats?.hits,
-    events: [],
-  };
-  currentShotBurst = burst;
+
   const scoreValue = typeof snapshot.stats?.score === 'number' ? snapshot.stats.score : 0;
   const recentRightClick = lastKnownRightClick;
   const details = recentRightClick && scoreValue > 80000
     ? `last right click at ${recentRightClick.x}, ${recentRightClick.y}`
     : undefined;
+  const burst: ShotBurst = {
+    id: uid(),
+    startedAt: Date.now(),
+    startedShots: snapshot.recentStats?.shots,
+    startedHits: snapshot.recentStats?.hits,
+    x: lastKnownRightClick?.x,
+    y: lastKnownRightClick?.y,
+    pageX: lastKnownRightClick?.pageX,
+    pageY: lastKnownRightClick?.pageY,
+    events: [],
+  };
+  currentShotBurst = burst;
+  
   currentShotBurst.events.push({
     id: uid(),
     timestamp: Date.now(),
     type: 'shots-increase',
     message: `shots increased to ${snapshot.recentStats?.shots ?? 'n/a'}`,
-    x: recentRightClick?.x,
-    y: recentRightClick?.y,
   });
   if (details) {
     currentShotBurst.events[currentShotBurst.events.length - 1].message = `${currentShotBurst.events[currentShotBurst.events.length - 1].message} (${details})`;
@@ -253,38 +257,41 @@ function handleBonusTracking(snapshot: RawStorageSnapshot, previousSnapshot: Raw
   if (!previousRecent || !currentRecent) return;
 
   const bonusDelta = (currentRecent.bonus ?? 0) - (previousRecent.bonus ?? 0);
-  if (typeof currentRecent.bonus === 'number' && bonusDelta > 0) {
-    if (bonusDelta !== 5000 && bonusDelta < 10000) {
-      appendGameBonusEntry(activeSession, `${bonusDelta / 2000} scouts guided`, 'live', bonusDelta);
-    } else if (bonusDelta === 10000) {
-      appendGameBonusEntry(activeSession, 'One bomber (or 5 sct.) guided', 'live', bonusDelta);
-    }
-
-    if (bonusDelta === 5000) {
-      const bonusTime = Date.now();
-      const entries = (getMetadata(activeSession).gameBonuses as GameBonusEntry[] | undefined) ?? [];
-      const scoutEntry = [...entries].reverse().find((entry) => entry.message === 'scout killed' && Math.abs(entry.timestamp - bonusTime) <= 500);
-      const bomberEntry = [...entries].reverse().find((entry) => entry.message === 'bomber killed' && Math.abs(entry.timestamp - bonusTime) <= 500);
-      if (scoutEntry && bomberEntry) {
-        const scoutIndex = entries.findIndex((entry) => entry.id === scoutEntry.id);
-        if (scoutIndex >= 0) {
-          entries[scoutIndex] = { ...entries[scoutIndex], message: 'scout killed. Killed whole squadron by self!' };
-          setMetadata(activeSession, { gameBonuses: entries });
+  const bomberKilled = (typeof currentRecent.bombers === 'number' && typeof previousRecent.bombers === 'number' && currentRecent.bombers > previousRecent.bombers);
+  const scoutKilled = (typeof currentRecent.scouts === 'number' && typeof previousRecent.scouts === 'number' && currentRecent.scouts > previousRecent.scouts);
+  const squadKilled = (bonusDelta === 5000 && !bomberKilled && scoutKilled);
+  
+  if (typeof currentRecent.bonus === 'number') {
+    if (bonusDelta === 0) {
+      if (scoutKilled && !squadKilled) {
+        appendGameBonusEntry(activeSession, 'scout killed', 'live');
+      }
+    } else {
+      if (bonusDelta !== 5000 && bonusDelta % 2000 !== 0) {
+        appendGameBonusEntry(activeSession, `performace bonus detected: ${bonusDelta}`, 'live', bonusDelta);
+      } else if (bonusDelta === 5000 && !squadKilled && !bomberKilled) {
+        appendGameBonusEntry(activeSession, 'performance bonus detected: 5000', 'live', bonusDelta);
+      } else {
+        if (bonusDelta === 5000) {
+          if (bomberKilled) { // This is a dumb way to organize the code, it should go up.
+            appendGameBonusEntry(activeSession, 'bomber killed', 'live', 5000);
+          }
+          if (scoutKilled) {
+            if (squadKilled) {
+              appendGameBonusEntry(activeSession, 'scout killed. Killed whole squadron by self!', 'live', 5000);
+            }
+          }
+        } else if (bonusDelta !== 5000 && bonusDelta < 10000) {
+          appendGameBonusEntry(activeSession, `${bonusDelta / 2000} scouts guided`, 'live', bonusDelta);
+        } else if (bonusDelta === 10000) {
+          appendGameBonusEntry(activeSession, 'One bomber (or 5 sct.) guided', 'live', bonusDelta);
+        }
+        if (typeof currentRecent.bonus === 'number') {
+          lastObservedBonusValue = currentRecent.bonus; // Something that is clearly either anomolous or a performance bonus are not included in this variable
+          setMetadata(activeSession, { lastTrackedBonus: currentRecent.bonus });
         }
       }
     }
-  }
-
-  if (typeof currentRecent.bombers === 'number' && typeof previousRecent.bombers === 'number' && currentRecent.bombers > previousRecent.bombers) {
-    appendGameBonusEntry(activeSession, 'bomber killed', 'live');
-  }
-  if (typeof currentRecent.scouts === 'number' && typeof previousRecent.scouts === 'number' && currentRecent.scouts > previousRecent.scouts) {
-    appendGameBonusEntry(activeSession, 'scout killed', 'live');
-  }
-
-  if (typeof currentRecent.bonus === 'number') {
-    lastObservedBonusValue = currentRecent.bonus;
-    setMetadata(activeSession, { lastTrackedBonus: currentRecent.bonus });
   }
 }
 
@@ -376,18 +383,6 @@ function recordClick(event: MouseEvent) {
   activeSession.clicks.push(click);
   if (click.button === 'right') {
     lastKnownRightClick = click;
-    if (currentShotBurst) {
-      appendShotBurstEvent(activeSession, {
-        id: uid(),
-        timestamp: click.timestamp,
-        type: 'right-click',
-        message: 'right click',
-        x: click.x,
-        y: click.y,
-        pageX: click.pageX,
-        pageY: click.pageY,
-      });
-    }
   } else {
     const leftClicks = [...(getMetadata(activeSession).leftClicks as ClickEvent[] | undefined) ?? []];
     leftClicks.push(click);

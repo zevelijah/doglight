@@ -40,10 +40,6 @@ export interface ShotBurstEvent {
   timestamp: number;
   type: 'right-click' | 'shots-increase' | 'hits-increase' | 'bomber-kill' | 'scout-kill' | 'player-kill';
   message?: string;
-  x?: number;
-  y?: number;
-  pageX?: number;
-  pageY?: number;
 }
 
 export interface ShotBurst {
@@ -52,6 +48,10 @@ export interface ShotBurst {
   endedAt?: number;
   startedShots?: number;
   startedHits?: number;
+  x?: number;
+  y?: number;
+  pageX?: number;
+  pageY?: number;
   events: ShotBurstEvent[];
 }
 
