@@ -8,7 +8,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
 - Cannot detect red team when scores are reversed.
 - Firing and other tracked local storage changes cause a noticable flicker.
-- Some sessioned get orphaned. The regular manual shutoff works if you keep the tab open, that emergecy stoppers don't seem to catch them.
+- Some sessioned get orphaned. The regular manual shutoff works if you keep the tab open, but the emergecy stoppers don't seem to catch them.
 - Possible Race codition if you finalize an orphaned session by creating a new one.
 - One time going back to the homepage with the arrow started a new session altogether.
 
@@ -19,8 +19,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
   - Make data storage and interpretation more dependent on actual data files like JSON rather than text searchs.
 - Fixing the orphans
   - Background fallbacks that actually pick up on tab changes.
-    - putting the tab ID back into the individual session types for a broader attack surface.
-  - At least putting an an async function wrapper around `startSession` and `finalizeActiveSession` so that they can be controlled by and async/await pattern and at least not lose the game data of an orphaned session.
+  - At least putting an an async function wrapper around `startSession` and `finalizeActiveSession` just to be careful with a race codition that probably doesn't exist between them.
   - When that is done, make sure both my buttons actually work.
 - Fixing the game results:
   - Figure out the pattern of team assignment, or some signal I can listen for

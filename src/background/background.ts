@@ -72,13 +72,13 @@ function initialize() {
 
   // 1. Catch Tab Closures (150ms delay)
   chrome.tabs.onRemoved.addListener((tabId) => {
-    finalizeOrphanedSession(tabId, 'tab_closed', 150);
+    finalizeOrphanedSession(tabId, 'tab_closed', 2000);
   });
 
   // 2. Catch Tab Reloads and Navigations (200ms delay)
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === 'loading') {
-      finalizeOrphanedSession(tabId, 'tab_reloaded_or_navigated', 200);
+      finalizeOrphanedSession(tabId, 'tab_reloaded_or_navigated', 2000);
     }
   });
 
@@ -99,6 +99,7 @@ function initialize() {
           });
         }
       });
+      return true;
     } else if (message?.type === 'EMERGENCY_STOP_SESSION') {
       chrome.storage.local.get([STORAGE_KEY], (result) => {
         const state = (result[STORAGE_KEY] ?? {}) as ExtensionStateRecord;
@@ -107,7 +108,9 @@ function initialize() {
           finalizeOrphanedSession(state.currentSessionTabId, 'emergency stop', 0);
         }
       });
+      return true;
     }
+    return false;
   });
 }
 

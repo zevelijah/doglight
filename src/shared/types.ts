@@ -39,7 +39,7 @@ export interface ShotBurstEvent {
   id: string;
   timestamp: number;
   type: 'right-click' | 'shots-increase' | 'hits-increase' | 'bomber-kill' | 'scout-kill' | 'player-kill';
-  message?: string;
+  // message?: string;
 }
 
 export interface ShotBurst {
@@ -58,9 +58,9 @@ export interface ShotBurst {
 export interface GameBonusEntry {
   id: string;
   timestamp: number;
-  message: string;
+  type: 'scout-kill' | 'squad-kill' |'bomber-kill' | 'bomber-guided' |'scouts-guided' | 'game-bonus' | 'performance-bonus-detected' | 'performance-bonus';
   source: 'live' | 'finalization';
-  amount?: number;
+  amount: number;
 }
 
 export interface GameSession {

@@ -10,6 +10,20 @@ interface RawStorageSnapshot {
   dogflightUid?: string;
 }
 
+interface DogflightStatsShootingTracker {
+  shots?: number;
+  hits?: number;
+  kills?: number;
+  bombers?: number;
+  scouts?: number;
+}
+
+interface DogflightStatsBonusTracker {
+  bombers?: number;
+  scouts?: number;
+  bonus?: number;
+}
+
 let activeSession: GameSession | null = null;
 let lastKnownSnapshot: RawStorageSnapshot = {};
 let lastKnownGameCount: number | null = null;
@@ -64,13 +78,13 @@ function appendDevEvent(session: GameSession | null, type: SessionDevEvent['type
   setMetadata(session, { devEvents: nextEvents });
 }
 
-function appendGameBonusEntry(session: GameSession | null, message: string, source: GameBonusEntry['source'], amount?: number) {
+function appendGameBonusEntry(session: GameSession | null, type: GameBonusEntry['type'], source: GameBonusEntry['source'], amount: number) {
   if (!session) return;
   const existing = (getMetadata(session).gameBonuses as GameBonusEntry[] | undefined) ?? [];
   const nextEntries = [...existing, {
     id: uid(),
     timestamp: Date.now(),
-    message,
+    type,
     source,
     amount,
   }];
@@ -109,19 +123,22 @@ function beginNewShotBurst(session: GameSession | null, snapshot: RawStorageSnap
   finalizeCurrentShotBurst(session);
 
   const scoreValue = typeof snapshot.stats?.score === 'number' ? snapshot.stats.score : 0;
-  const recentRightClick = lastKnownRightClick;
-  const details = recentRightClick && scoreValue > 80000
-    ? `last right click at ${recentRightClick.x}, ${recentRightClick.y}`
+  const recentRightClick = lastKnownRightClick && scoreValue > 80000
+    ? lastKnownRightClick
     : undefined;
+  // const details = recentRightClick && scoreValue > 80000
+  //   ? `last right click at ${recentRightClick.x}, ${recentRightClick.y}`
+  //   : undefined;
+
   const burst: ShotBurst = {
     id: uid(),
     startedAt: Date.now(),
     startedShots: snapshot.recentStats?.shots,
     startedHits: snapshot.recentStats?.hits,
-    x: lastKnownRightClick?.x,
-    y: lastKnownRightClick?.y,
-    pageX: lastKnownRightClick?.pageX,
-    pageY: lastKnownRightClick?.pageY,
+    x: recentRightClick?.x,
+    y: recentRightClick?.y,
+    pageX: recentRightClick?.pageX,
+    pageY: recentRightClick?.pageY,
     events: [],
   };
   currentShotBurst = burst;
@@ -130,11 +147,11 @@ function beginNewShotBurst(session: GameSession | null, snapshot: RawStorageSnap
     id: uid(),
     timestamp: Date.now(),
     type: 'shots-increase',
-    message: `shots increased to ${snapshot.recentStats?.shots ?? 'n/a'}`,
+    // message: `shots increased to ${snapshot.recentStats?.shots ?? 'n/a'}`,
   });
-  if (details) {
-    currentShotBurst.events[currentShotBurst.events.length - 1].message = `${currentShotBurst.events[currentShotBurst.events.length - 1].message} (${details})`;
-  }
+  // if (details) {
+  //   currentShotBurst.events[currentShotBurst.events.length - 1].message = `${currentShotBurst.events[currentShotBurst.events.length - 1].message} (${details})`;
+  // }
   const bursts = [...(getMetadata(session).shotBursts as ShotBurst[] | undefined) ?? []];
   bursts.push(currentShotBurst);
   setMetadata(session, { shotBursts: bursts });
@@ -232,7 +249,6 @@ function handleShotBurstTracking(snapshot: RawStorageSnapshot, previousSnapshot:
       id: uid(),
       timestamp: Date.now(),
       type: 'hits-increase',
-      message: `hit ${index + 1}`,
     });
   }
 
@@ -241,7 +257,6 @@ function handleShotBurstTracking(snapshot: RawStorageSnapshot, previousSnapshot:
       id: uid(),
       timestamp: Date.now(),
       type: 'bomber-kill',
-      message: 'bomber killed',
     });
   }
   if ((currentRecent.scouts ?? 0) > (previousRecent.scouts ?? 0)) {
@@ -249,7 +264,6 @@ function handleShotBurstTracking(snapshot: RawStorageSnapshot, previousSnapshot:
       id: uid(),
       timestamp: Date.now(),
       type: 'scout-kill',
-      message: 'scout killed',
     });
   }
   if ((currentRecent.kills ?? 0) > (previousRecent.kills ?? 0)) {
@@ -257,7 +271,6 @@ function handleShotBurstTracking(snapshot: RawStorageSnapshot, previousSnapshot:
       id: uid(),
       timestamp: Date.now(),
       type: 'player-kill',
-      message: 'player kill',
     });
   }
 
@@ -280,27 +293,27 @@ function handleBonusTracking(snapshot: RawStorageSnapshot, previousSnapshot: Raw
   if (typeof currentRecent.bonus === 'number') {
     if (bonusDelta === 0) {
       if (scoutKilled && !squadKilled) {
-        appendGameBonusEntry(activeSession, 'scout killed', 'live');
+        appendGameBonusEntry(activeSession, 'scout-kill', 'live', 0);
       }
     } else {
       if (bonusDelta !== 5000 && bonusDelta % 2000 !== 0) {
-        appendGameBonusEntry(activeSession, `performace bonus detected: ${bonusDelta}`, 'live', bonusDelta);
+        appendGameBonusEntry(activeSession, 'performance-bonus', 'live', bonusDelta);
       } else if (bonusDelta === 5000 && !squadKilled && !bomberKilled) {
-        appendGameBonusEntry(activeSession, 'performance bonus detected: 5000', 'live', bonusDelta);
+        appendGameBonusEntry(activeSession, 'performance-bonus', 'live', bonusDelta);
       } else {
         if (bonusDelta === 5000) {
           if (bomberKilled) { // This is a dumb way to organize the code, it should go up.
-            appendGameBonusEntry(activeSession, 'bomber killed', 'live', 5000);
+            appendGameBonusEntry(activeSession, 'bomber-kill', 'live', 5000);
           }
           if (scoutKilled) {
             if (squadKilled) {
-              appendGameBonusEntry(activeSession, 'scout killed. Killed whole squadron by self!', 'live', 5000);
+              appendGameBonusEntry(activeSession, 'squad-kill', 'live', 5000);
             }
           }
         } else if (bonusDelta !== 5000 && bonusDelta < 10000) {
-          appendGameBonusEntry(activeSession, `${bonusDelta / 2000} scouts guided`, 'live', bonusDelta);
+          appendGameBonusEntry(activeSession, 'scouts-guided', 'live', bonusDelta);
         } else if (bonusDelta === 10000) {
-          appendGameBonusEntry(activeSession, 'One bomber (or 5 sct.) guided', 'live', bonusDelta);
+          appendGameBonusEntry(activeSession, 'bomber-guided', 'live', bonusDelta);
         }
         if (typeof currentRecent.bonus === 'number') {
           lastObservedBonusValue = currentRecent.bonus; // Something that is clearly either anomolous or a performance bonus are not included in this variable
@@ -376,9 +389,20 @@ function captureSnapshot() {
 
   maybeAdvanceGameState(snapshot);
   applySnapshotToActiveSession(snapshot);
+
   if (activeSession) {
-    handleShotBurstTracking(snapshot, previousSnapshot);
-    handleBonusTracking(snapshot, previousSnapshot);
+    const previousRecentShooting = previousSnapshot.recentStats as DogflightStatsShootingTracker | undefined;
+    const currentRecentShooting = snapshot.recentStats as DogflightStatsShootingTracker | undefined;
+
+    const previousRecentBonus = previousSnapshot.recentStats as DogflightStatsBonusTracker | undefined;
+    const currentRecentBonus = snapshot.recentStats as DogflightStatsBonusTracker | undefined;
+
+    if (previousRecentShooting && currentRecentShooting && previousRecentShooting.shots !== currentRecentShooting.shots) {
+      handleShotBurstTracking(snapshot, previousSnapshot);
+    }
+    if (previousRecentBonus && currentRecentBonus && previousRecentBonus.bonus !== currentRecentBonus.bonus) {
+      handleBonusTracking(snapshot, previousSnapshot);
+    }
     persistState({ currentSession: activeSession });
   }
 }
@@ -415,18 +439,22 @@ function finalizeActiveSession(detectedBy: DetectionMethod = 'listener', details
       return;
     }
 
-    // 1. SYNCHRONOUS LOCK: Detach activeSession immediately
-    // This prevents re-entry or duplicate executions inside content.ts
-    const sessionToSave = activeSession;
-    activeSession = null;
+    console.log('[Content] Finalizing session')
 
     captureSnapshot();
+
+    const sessionToSave = activeSession;
+    activeSession = null;
 
     if (currentShotBurst) {
       finalizeCurrentShotBurst(sessionToSave);
       currentShotBurst = null;
     }
-    appendDevEvent(sessionToSave, 'graceful', detectedBy, details);
+    if (details === 'manual stop') {
+      appendDevEvent(sessionToSave, 'disconnect', detectedBy, details);
+    } else {
+      appendDevEvent(sessionToSave, 'graceful', detectedBy, details);
+    }
 
     sessionToSave.endedAt = Date.now();
     sessionToSave.status = 'ended';
@@ -442,32 +470,56 @@ function finalizeActiveSession(detectedBy: DetectionMethod = 'listener', details
     const deaths = Number(lastKnownSnapshot.recentStats?.deaths ?? 0);
 
     if (typeof bonusBefore === 'number' && typeof bonusAfter === 'number' && bonusAfter > bonusBefore) {
-      appendGameBonusEntry(sessionToSave, 'total game bonuses', 'finalization', bonusBefore);
-      const expectedPerformanceBonus = timeSaved * ((kills - deaths) + (points - pointsAgainst));
-      if (expectedPerformanceBonus > 0) {
-        appendGameBonusEntry(sessionToSave, 'performance bonus', 'finalization', expectedPerformanceBonus);
+      appendGameBonusEntry(sessionToSave, 'game-bonus', 'finalization', bonusBefore);
+      
+      if (timeSaved > 0 && kills - deaths > 0) {
+        const expectedPerformanceBonus = timeSaved * ((kills - deaths) + (points - pointsAgainst));
+
         const actualIncrease = bonusAfter - bonusBefore;
         if ((points > pointsAgainst && actualIncrease !== expectedPerformanceBonus) || (pointsAgainst > points && actualIncrease === expectedPerformanceBonus)) {
-          setMetadata(sessionToSave, { team: 'red' });
+            setMetadata(sessionToSave, { team: 'red' });
+        }
+
+        if (actualIncrease > 0) {
+          appendGameBonusEntry(sessionToSave, 'performance-bonus', 'finalization', actualIncrease);
         }
       }
     }
 
+    // Test if sessionToSave is cleanly serializable
+    try {
+      JSON.parse(JSON.stringify(sessionToSave));
+      console.log('[Content] sessionToSave serialization passed ✅');
+    } catch (err) {
+      console.error('❌ [Content] sessionToSave contains NON-SERIALIZABLE data:', err);
+    }
+
     // 2. ATOMIC WRITE: Clear currentSession and currentSessionTabId
-    loadState((state) => {
-      const nextSessions = [...(state.sessions ?? []), sessionToSave];
-      chrome.storage.local.set({
-        [STORAGE_KEY]: {
-          ...state,
-          currentSession: undefined,      // Marks session as finalized!
-          currentSessionTabId: undefined, // Clears ownership!
-          sessions: nextSessions,
-          lastUpdated: Date.now(),
-        },
-      }, () => {
-        resolve();
+    try {
+      loadState((state) => {
+        console.log('[Content] attempting to store game')
+        const nextSessions = [...(state.sessions ?? []), sessionToSave];
+        chrome.storage.local.set({
+          [STORAGE_KEY]: {
+            ...state,
+            currentSession: undefined,
+            currentSessionTabId: undefined,
+            sessions: nextSessions,
+            lastUpdated: Date.now(),
+          },
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ [Content] Storage WRITE FAILED:', chrome.runtime.lastError.message);
+          } else {
+            console.log('✅ [Content] Game session successfully stored to disk!');
+          }
+          resolve();
+        });
       });
-    });
+    } catch (err) {
+      console.error('❌ [Content] Synchronous error inside loadState callback:', err);
+      resolve();
+    }
   });
 }
 
@@ -495,6 +547,7 @@ function initialize() {
 
   // Listen to the custom event coming from injected.ts (MAIN world)
   window.addEventListener(STORAGE_EVENT_NAME, () => {
+    // captureSnapshot();
     debouncedCapture();
   });
 
@@ -504,12 +557,17 @@ function initialize() {
   };
 
   window.addEventListener('beforeunload', () => {
+    // If using multiple content session ending methods, remove this line
+    //  so that activeSession detachment comes fast enough to prevent conflict. 
+    // This issue is sort of insurmountable.
+    // captureSnapshot(); 
     handleSessionEnd('beforeunload');
   });
 
   // // Detector for page navigation/unload
   // window.addEventListener('pagehide', (event) => {
   //   // event.persisted indicates if page is entering bfcache
+  //   // captureSnapshot(); 
   //   handleSessionEnd(event.persisted ? 'page entering bfcache' : 'pagehide');
   // });
 

@@ -42,7 +42,7 @@ function checkKeyMutation(key: string) {
     stateCache[key] = relevantString;
     
     // Console log for debugging: open the page console to verify detection
-    console.log(`[Dogflight Injected] Storage mutation detected for "${key}":`, relevantState);
+    // console.log(`[Dogflight Injected] Storage mutation detected for "${key}":`, relevantState);
 
     window.dispatchEvent(
       new CustomEvent(STORAGE_EVENT_NAME, {
