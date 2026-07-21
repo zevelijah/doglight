@@ -1,4 +1,4 @@
-import type { ExtensionState, GameSession, GameBonusEntry, ClickEvent, ShotBurst, ShotBurstEvent } from '../shared/types';
+import type { ExtensionState, GameSession, GameBonusEntry, ClickEvent, ShotBurst, SessionDevEvent } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
 
@@ -28,19 +28,22 @@ function escapeHtml(value: unknown) {
     .replace(/"/g, '&quot;');
 }
 
-function getResult(recentStats: Record<string, unknown> | undefined) {
+function getResult(recentStats: Record<string, unknown> | undefined, devEvent: SessionDevEvent | undefined) {
   const points = Number(recentStats?.points ?? 0);
   const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
   const time = Number(recentStats?.time ?? 0);
   const shots = Number(recentStats?.shots ?? 0);
-  if (points !== 100 && pointsAgainst !== 100 && (time < 1198 || shots === 0)) return 'Disconnected';
+  if ((points !== 100 && pointsAgainst !== 100 && shots === 0) || devEvent?.type === 'disconnect') return 'Disconnected';
   if (points === pointsAgainst) return 'Tied';
   if (points > pointsAgainst) return 'Won';
   if (points < pointsAgainst) return 'Lost';
 }
 
 function getSessionResult(session: GameSession, recentStats: Record<string, unknown> | undefined) {
-  const result = getResult(recentStats);
+  const devEvents = session.metadata?.devEvents;
+  const panicDevEvent = devEvents?.find((event) => event.type === 'disconnect') as SessionDevEvent | undefined
+
+  const result = getResult(recentStats, panicDevEvent);
   if (result === 'Won' && session.metadata?.team === 'red') return 'Lost';
   if (result === 'Lost' && session.metadata?.team === 'red') return 'Won';
   return result;
@@ -72,6 +75,9 @@ function renderOverview(state: ExtensionState) {
   const allTimeStats = state.latestStats as Record<string, unknown> | undefined;
   const latestRecent = state.latestRecentStats as Record<string, unknown> | undefined;
   const totalGames = Number(allTimeStats?.games ?? 0);
+  const devEvents = state.currentSession?.metadata?.devEvents as SessionDevEvent[] | undefined;
+  const panicDevEvent = devEvents?.find((event) => event.type === 'disconnect') as SessionDevEvent | undefined
+
 
   const rankingFields = [
     ['Weekly High Score', allTimeStats?.weeklyHighScore],
@@ -108,7 +114,7 @@ function renderOverview(state: ExtensionState) {
       <div class="stat-grid">
         <div class="stat-row">Points: ${formatMetric(latestRecent?.points as MetricValue)}</div>
         <div class="stat-row">Opponent points: ${formatMetric(latestRecent?.pointsAgainst as MetricValue)}</div>
-        <div class="stat-row">Result: ${getResult(latestRecent as Record<string, unknown> | undefined)}</div>
+        <div class="stat-row">Result: ${getResult(latestRecent as Record<string, unknown> | undefined, panicDevEvent)}</div>
         <div class="stat-row">Shots: ${formatMetric(latestRecent?.shots as MetricValue)}</div>
         <div class="stat-row">Hits: ${formatMetric(latestRecent?.hits as MetricValue)}</div>
         <div class="stat-row">Precision: ${getPrecision(latestRecent as Record<string, unknown> | undefined)}</div>
@@ -343,7 +349,35 @@ async function openFullPage() {
   await chrome.tabs.create({ url });
 }
 
+async function emergencyStopSession() {
+  const state = await loadState();
+  if (state.currentSessionTabId !== undefined) {
+    chrome.runtime.sendMessage({ type: 'EMERGENCY_STOP_SESSION' });
+  }
+
+  await refresh();
+}
+
+async function stopSession() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  
+  if (tab?.id) {
+    // 1. Try sending directly to content.ts
+    chrome.tabs.sendMessage(tab.id, { type: 'STOP_SESSION' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('Content script not responding. Falling back to background emergency stop.');
+        // 2. Fallback: If content.ts is dead or reloaded, notify background worker
+        chrome.runtime.sendMessage({ type: 'EMERGENCY_STOP_SESSION' });
+      }
+    });
+  }
+
+  await refresh();
+}
+
 document.getElementById('refresh')?.addEventListener('click', () => void refresh());
 document.getElementById('export')?.addEventListener('click', () => void exportJson());
 document.getElementById('openFullPage')?.addEventListener('click', () => void openFullPage());
+document.getElementById('stopSession')?.addEventListener('click', () => void stopSession());
+document.getElementById('emergencyStopSession')?.addEventListener('click', () => void emergencyStopSession());
 refresh();

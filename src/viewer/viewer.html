@@ -20,6 +20,7 @@
       button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
       button:active { transform: scale(0.97); }
       button.secondary { background: #374151; }
+      button.dangerous { background: #f87171; }
       .panel { background: #1f2937; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
       .session-card { background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
       .session-card .meta { color: #9ca3af; font-size: 12px; margin-top: 6px; }
@@ -47,6 +48,8 @@
       <div id="overviewContainer"></div>
       <button id="refresh">Refresh</button>
       <button id="export" class="secondary">Export JSON</button>
+      <button id="stopSession" class="secondary">Stop Session</button>
+      <button id="emergencyStopSession" class="dangerous">Emergency Stop Session</button>
       <button id="openFullPage" class="secondary" hidden>Open full viewer</button>
     </div>
     <div id="sessionsSection" class="panel" hidden>

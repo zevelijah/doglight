@@ -140,8 +140,24 @@ function beginNewShotBurst(session: GameSession | null, snapshot: RawStorageSnap
   setMetadata(session, { shotBursts: bursts });
 }
 
+function setSelfTabId(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: 'SET_TAB_ID' }, () => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      resolve();
+    });
+  });
+}
+
 function startSession(snapshot: RawStorageSnapshot, detectedBy: DetectionMethod = 'message', details?: string) {
   activeSession = buildSession();
+
+  setSelfTabId().catch((error) => {
+    console.error('[Content] Failed to set self tab ID. The session will not close automatically:', error);
+  });
+
   if (snapshot.stats) {
     activeSession.statsAtStart = snapshot.stats;
   }
@@ -301,6 +317,7 @@ function loadState(callback: (state: ExtensionState) => void) {
     const normalized: ExtensionState = {
       sessions: state.sessions ?? [],
       currentSession: state.currentSession,
+      currentSessionTabId: state.currentSessionTabId,
       latestStats: state.latestStats,
       latestRecentStats: state.latestRecentStats,
       latestName: state.latestName,
@@ -398,13 +415,19 @@ function finalizeActiveSession(detectedBy: DetectionMethod = 'listener', details
       return;
     }
 
+    // 1. SYNCHRONOUS LOCK: Detach activeSession immediately
+    // This prevents re-entry or duplicate executions inside content.ts
+    const sessionToSave = activeSession;
+    activeSession = null;
+
+    captureSnapshot();
+
     if (currentShotBurst) {
-      finalizeCurrentShotBurst(activeSession);
+      finalizeCurrentShotBurst(sessionToSave);
       currentShotBurst = null;
     }
+    appendDevEvent(sessionToSave, 'graceful', detectedBy, details);
 
-    appendDevEvent(activeSession, 'disconnect', detectedBy, details);
-    const sessionToSave = activeSession;
     sessionToSave.endedAt = Date.now();
     sessionToSave.status = 'ended';
     sessionToSave.statsAtEnd = lastKnownSnapshot.stats;
@@ -430,38 +453,76 @@ function finalizeActiveSession(detectedBy: DetectionMethod = 'listener', details
       }
     }
 
+    // 2. ATOMIC WRITE: Clear currentSession and currentSessionTabId
     loadState((state) => {
       const nextSessions = [...(state.sessions ?? []), sessionToSave];
       chrome.storage.local.set({
         [STORAGE_KEY]: {
           ...state,
-          currentSession: undefined,
+          currentSession: undefined,      // Marks session as finalized!
+          currentSessionTabId: undefined, // Clears ownership!
           sessions: nextSessions,
           lastUpdated: Date.now(),
         },
       }, () => {
-        activeSession = null;
         resolve();
       });
     });
   });
 }
 
-function initialize() { // This function was written stupidly! The captureSnapshot is too big! The failure listener can't work, and doesn't have a a fallback. The storage listener by definition can't function at all! 
+const STORAGE_EVENT_NAME = 'DOGFLIGHT_STORAGE_MUTATED';
+
+// Simple debounce helper to collapse rapid bursts into a single snapshot execution
+function debounce(fn: Function, delayMs: number) {
+  let timeoutId: number;
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delayMs);
+  };
+}
+
+function initialize() { 
   if (!window.location.origin.startsWith(DOGFLIGHT_ORIGIN)) return;
+
+  // 1. Record mouse interactions
   document.addEventListener('click', recordClick, true);
-  window.addEventListener('storage', captureSnapshot);
-  window.addEventListener('beforeunload', () => {
-    void finalizeActiveSession('listener', 'page unload');
+
+  // 2. Debounced capture for local storage mutations (Wait 200ms for batch changes to finish)
+  const debouncedCapture = debounce(() => {
+    captureSnapshot();
+  }, 100);
+
+  // Listen to the custom event coming from injected.ts (MAIN world)
+  window.addEventListener(STORAGE_EVENT_NAME, () => {
+    debouncedCapture();
   });
+
+  // 3. Modern Lifecycle Management for ending sessions
+  const handleSessionEnd = (reason: string) => {
+    void finalizeActiveSession('listener', reason);
+  };
+
+  window.addEventListener('beforeunload', () => {
+    handleSessionEnd('beforeunload');
+  });
+
+  // // Detector for page navigation/unload
+  // window.addEventListener('pagehide', (event) => {
+  //   // event.persisted indicates if page is entering bfcache
+  //   handleSessionEnd(event.persisted ? 'page entering bfcache' : 'pagehide');
+  // });
+
+  // 4. Runtime Messaging for manual stop
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type === 'stop-active-session') {
+    if (message?.type === 'STOP_SESSION') {
       void finalizeActiveSession('listener', 'manual stop').then(() => sendResponse({ ok: true }));
-      return true;
+      return true; // Keep message channel open for async response
     }
     return false;
   });
-  setInterval(captureSnapshot, 1000);
+  
+  // setInterval(captureSnapshot, 1000);
   captureSnapshot();
 }
 

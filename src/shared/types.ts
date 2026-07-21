@@ -30,8 +30,8 @@ export interface ClickEvent {
 
 export interface SessionDevEvent {
   timestamp: number;
-  type: 'connect' | 'disconnect' | 'non-disconnect';
-  detectedBy: 'message' | 'listener' | 'game-count-change';
+  type: 'connect' | 'disconnect' | 'graceful';
+  detectedBy: 'message' | 'listener' | 'game-count-change' | 'background';
   details?: string;
 }
 
@@ -85,6 +85,7 @@ export interface GameSession {
 
 export interface ExtensionState {
   currentSession?: GameSession;
+  currentSessionTabId?: number;
   sessions: GameSession[];
   latestStats?: DogflightStats;
   latestRecentStats?: DogflightStats;
