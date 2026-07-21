@@ -382,12 +382,9 @@ function render(state: ExtensionState) {
   });
 
   // 3. LOAD MORE BUTTON: Render if there are more sessions to show
-  // Note to self: bring over style to viewer.html
   if (visibleSessionCount < sessions.length) {
     const loadMoreContainer = document.createElement('div');
     loadMoreContainer.className = 'load-more-container';
-    loadMoreContainer.style.textAlign = 'center';
-    loadMoreContainer.style.margin = '20px 0';
 
     const loadMoreBtn = document.createElement('button');
     loadMoreBtn.className = 'primary';
