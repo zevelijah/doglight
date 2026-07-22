@@ -63,6 +63,7 @@ function buildSession(): GameSession {
       gameBonuses: [],
       leftClicks: [],
       devEvents: [],
+      deathTimestamps: [],
     },
   };
 }
@@ -77,6 +78,7 @@ function getMetadata(session: GameSession) {
       gameBonuses: [],
       leftClicks: [],
       devEvents: [],
+      deathTimestamps: [],
     };
   }
   return session.metadata as NonNullable<GameSession['metadata']>;
@@ -175,6 +177,26 @@ function beginNewShotBurst(session: GameSession | null, snapshot: RawStorageSnap
   const meta = getMetadata(session);
   if (!meta.shotBursts) meta.shotBursts = [];
   (meta.shotBursts as ShotBurst[]).push(currentShotBurst);
+}
+
+function handleDeathTracking(
+  snapshot: RawStorageSnapshot,
+  previousSnapshot: RawStorageSnapshot
+) {
+  if (!activeSession) return;
+  const previousDeaths = previousSnapshot.recentStats?.deaths ?? 0;
+  const currentDeaths = snapshot.recentStats?.deaths ?? 0;
+  const deathsDelta = currentDeaths - previousDeaths;
+
+  if (deathsDelta > 0) {
+    const meta = getMetadata(activeSession);
+    if (!meta.deathTimestamps) {
+      meta.deathTimestamps = [];
+    }
+    for (let i = 0; i < deathsDelta; i++) {
+      (meta.deathTimestamps as number[]).push(Date.now());
+    }
+  }
 }
 
 function setSelfTabId(): Promise<void> {
@@ -441,7 +463,8 @@ function captureSnapshot() {
     snapshot.recentStats?.bonus !== previousSnapshot.recentStats?.bonus ||
     snapshot.recentStats?.kills !== previousSnapshot.recentStats?.kills ||
     snapshot.recentStats?.bombers !== previousSnapshot.recentStats?.bombers ||
-    snapshot.recentStats?.scouts !== previousSnapshot.recentStats?.scouts;
+    snapshot.recentStats?.scouts !== previousSnapshot.recentStats?.scouts ||
+    snapshot.recentStats?.deaths !== previousSnapshot.recentStats?.deaths;
 
   if (hasChanged) {
     lastKnownSnapshot = snapshot;
@@ -478,6 +501,13 @@ function captureSnapshot() {
       previousRecentBonus.bonus !== currentRecentBonus.bonus
     ) {
       handleBonusTracking(snapshot, previousSnapshot);
+    }
+    if (
+      previousSnapshot.recentStats &&
+      snapshot.recentStats &&
+      previousSnapshot.recentStats.deaths !== snapshot.recentStats.deaths
+    ) {
+      handleDeathTracking(snapshot, previousSnapshot);
     }
   }
 }

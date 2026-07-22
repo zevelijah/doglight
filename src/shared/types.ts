@@ -85,6 +85,7 @@ export interface GameSession {
     leftClicks?: ClickEvent[];
     team?: 'green' | 'red';
     lastTrackedBonus?: number;
+    deathTimestamps?: number[];
   };
 }
 

@@ -260,6 +260,7 @@ function render(state: ExtensionState) {
       const gameBonuses = (session.metadata?.gameBonuses as GameBonusEntry[] | undefined) ?? [];
       const leftClicks = (session.metadata?.leftClicks as ClickEvent[] | undefined) ?? [];
       const selectedPlanes = session.selectedPlanes ?? [];
+      const deathTimestamps = (session.metadata?.deathTimestamps as number[] | undefined) ?? [];
       const planesDisplay = toDisplayPlane(selectedPlanes);
 
       const guidedScouts = gameBonuses
@@ -422,6 +423,16 @@ function render(state: ExtensionState) {
       devDetails.appendChild(devSummary);
       devDetails.appendChild(devPre);
 
+      const deathsDetails = document.createElement('details');
+      const deathsSummary = document.createElement('summary');
+      deathsSummary.textContent = `Deaths`;
+      const deathsPre = document.createElement('pre');
+      deathsPre.textContent = deathTimestamps.length
+        ? deathTimestamps.map(timestamp => toDisplayTime(timestamp)).join('\n')
+        : 'No deaths recorded.';
+      deathsDetails.appendChild(deathsSummary);
+      deathsDetails.appendChild(deathsPre);
+
       const endingButtons = document.createElement('div');
       endingButtons.className = 'ending-buttons';
 
@@ -443,6 +454,7 @@ function render(state: ExtensionState) {
       card.appendChild(bonusDetails);
       card.appendChild(leftClicksDetails);
       card.appendChild(planesDetails);
+      card.appendChild(deathsDetails);
       card.appendChild(devDetails);
       card.appendChild(endingButtons);
       sessionsList.appendChild(card);
