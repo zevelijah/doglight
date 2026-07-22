@@ -363,17 +363,28 @@ function render(state: ExtensionState) {
       devDetails.appendChild(devSummary);
       devDetails.appendChild(devPre);
 
+      const endingButtons = document.createElement('div');
+      endingButtons.className = 'ending-buttons';
+
+      const switchButton = document.createElement('button');
+      switchButton.textContent = 'Switch team';
+      switchButton.className = 'secondary';
+      switchButton.addEventListener('click', () => void switchTeams(session.id));
+
       const deleteButton = document.createElement('button');
       deleteButton.textContent = 'Delete game';
       deleteButton.className = 'secondary';
       deleteButton.addEventListener('click', () => void deleteSession(session.id));
+
+      endingButtons.appendChild(switchButton);
+      endingButtons.appendChild(deleteButton);
 
       card.appendChild(summary);
       card.appendChild(shotBurstDetails);
       card.appendChild(bonusDetails);
       card.appendChild(leftClicksDetails);
       card.appendChild(devDetails);
-      card.appendChild(deleteButton);
+      card.appendChild(endingButtons);
       sessionsList.appendChild(card);
 
     } catch (err) {
@@ -402,7 +413,6 @@ function render(state: ExtensionState) {
 
 async function refresh() {
   const state = await loadState();
-  visibleSessionCount = 10;
   render(state);
 }
 
@@ -414,6 +424,41 @@ async function deleteSession(id: string) {
   }
   await saveState(state);
   await refresh();
+}
+
+async function switchTeams(id: string) {
+  const state = await loadState();
+
+  // 1. Toggle team inside the completed sessions list
+  state.sessions = (state.sessions ?? []).map((session) => {
+    if (session.id === id) {
+      const currentTeam = session.metadata?.team ?? 'green';
+      const nextTeam = currentTeam === 'green' ? 'red' : 'green';
+
+      return {
+        ...session,
+        metadata: {
+          ...(session.metadata ?? {}),
+          team: nextTeam,
+        },
+      };
+    }
+    return session;
+  });
+
+  // 2. Also toggle team if it happens to be the active session
+  // if (state.currentSession?.id === id) {
+  //   const currentTeam = state.currentSession.metadata?.team ?? 'green';
+  //   const nextTeam = currentTeam === 'green' ? 'red' : 'green';
+
+  //   state.currentSession.metadata = {
+  //     ...(state.currentSession.metadata ?? {}),
+  //     team: nextTeam,
+  //   };
+  // }
+
+  await saveState(state);
+  await refresh(); // Added () to actually invoke the function
 }
 
 async function exportJson() {

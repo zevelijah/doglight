@@ -14,16 +14,13 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
 #### Small To-Dos
 
-- Fixing the flicker
-  - Introduce more filters in `captureSnapshot` for which handles are called.
-  - Make data storage and interpretation more dependent on actual data files like JSON rather than text searchs.
+- Fixing the flicker. It is now mostly gone.
 - Fixing the orphans
   - Background fallbacks that actually pick up on tab changes.
   - At least putting an an async function wrapper around `startSession` and `finalizeActiveSession` just to be careful with a race codition that probably doesn't exist between them.
   - When that is done, make sure both my buttons actually work.
 - Fixing the game results:
   - Figure out the pattern of team assignment, or some signal I can listen for
-  - Add a button to do it manually if all else fails.
 
 #### Big To-Dos
 
