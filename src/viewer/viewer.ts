@@ -225,13 +225,13 @@ function render(state: ExtensionState) {
       const guidedBombers = gameBonuses
         .filter((entry) => {
           const typeStr = String(entry?.type ?? '');
-          return typeStr.includes('bomber-guided') && typeStr.includes('guided');
+          return typeStr === 'bomber-guided' && typeStr.includes('guided');
         }).length;
 
       const bothBonusSummary = gameBonuses
         .filter((entry) => {
           const typeStr = String(entry?.type ?? '');
-          return typeStr.includes('game-bonus') || typeStr.includes('performance-bonus');
+          return typeStr === 'game-bonus' || typeStr === 'performance-bonus';
         })
         .map((entry) => {
           const isGameBonus = String(entry?.type ?? '') === 'game-bonus';
