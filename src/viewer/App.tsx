@@ -387,13 +387,31 @@ export default function App() {
   const devEvents = state.currentSession?.metadata?.devEvents as SessionDevEvent[] | undefined;
   const panicDevEvent = devEvents?.find((e) => e.type === 'disconnect');
 
+  let bestAllTimeRank = state.bestAllTimeRank;
+  if (bestAllTimeRank === undefined) {
+    let bestRank = Infinity;
+    for (const session of state.sessions) {
+      const rank = session.recentStatsAtEnd?.allTimeHighScore;
+      if (typeof rank === 'number' && rank > 0 && rank < bestRank) {
+        bestRank = rank;
+      }
+    }
+    if (bestRank === Infinity) {
+      bestAllTimeRank = 101;
+    } else {
+      bestAllTimeRank = bestRank;
+    }
+  }
+
   const rankingFields = [
     ['Weekly High Score', allTimeStats?.weeklyHighScore],
     ['Monthly High Score', allTimeStats?.monthlyHighScore],
-    ['All Time High Score', allTimeStats?.allTimeHighScore],
   ];
+  if (bestAllTimeRank !== undefined && bestAllTimeRank <= 100) {
+    rankingFields.push(['All Time High Score', bestAllTimeRank]);
+  }
   const rankingText = rankingFields
-    .filter(([, value]) => typeof value === 'number' && Number(value) !== -1)
+    .filter(([, value]) => typeof value === 'number' && Number(value) > 0)
     .map(([label, value]) => `${label}: ${value}`)
     .join('   ');
 
@@ -426,7 +444,7 @@ export default function App() {
           <details className="overview-details">
             <summary>Overall stats</summary>
             <div className="overview-line">
-              {rankingText || 'No rankings yet'} Games: {Number(allTimeStats?.games ?? 0)} Best:{' '}
+              {rankingText || 'No rankings yet'}     Games: {Number(allTimeStats?.games ?? 0)}      Best:{' '}
               {rankingText || 'n/a'}
             </div>
             <div className="stat-grid">
@@ -551,6 +569,12 @@ function SessionCard({ session, onDelete, onSwitchTeam }: SessionCardProps) {
   const deathTimestamps = (session.metadata?.deathTimestamps as number[] | undefined) ?? [];
   const planesDisplay = toDisplayPlane(selectedPlanes);
 
+  const weekly = recentStats?.weeklyHighScore as number | undefined;
+  const monthly = recentStats?.monthlyHighScore as number | undefined;
+  const allTime = recentStats?.allTimeHighScore as number | undefined;
+  const hasRanking =
+    (weekly != null && weekly > 0) || (monthly != null && monthly > 0) || (allTime != null && allTime > 0);
+
   const guidedScouts = gameBonuses
     .filter((entry) => String(entry?.type ?? '').includes('scouts-guided'))
     .reduce((total, entry) => total + Number(entry.amount ?? 0) / 2000, 0);
@@ -629,6 +653,19 @@ function SessionCard({ session, onDelete, onSwitchTeam }: SessionCardProps) {
         <div className="meta-group">
           <div className="meta">Bombers guided: {guidedBombers}</div>
           <div className="meta">Scouts guided: {guidedScouts.toFixed(0)}</div>
+        </div>
+        <div className="meta-group">
+          {hasRanking ? (
+            <>
+              {weekly != null && weekly > 0 && <div className="meta">Weekly High Score: {weekly}</div>}
+              {monthly != null && monthly > 0 && <div className="meta">Monthly High Score: {monthly}</div>}
+              {allTime != null && allTime > 0 && (
+                <div className="meta">All Time High Score: {allTime}</div>
+              )}
+            </>
+          ) : (
+            <div className="meta">no rankings recorded.</div>
+          )}
         </div>
         <div className="meta-group">
           <div className="meta">

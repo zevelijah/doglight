@@ -10,11 +10,11 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Firing and movement cause noticeable flickering.
 - Some sessions become orphaned. The regular manual shutoff works if you keep the tab open, but the emergency fallbacks do not seem to catch them.
 - Possible race condition if you finalize an orphaned session by creating a new one.
-- All-time high scores may not be getting saved.
 
 #### Small To-Dos
 
 - Fix the flickering. It is now mostly gone.
+  - `content.ts` might have to be lightend in favor of `injected.ts`.
 - Fix orphaned sessions.
   - Add background fallbacks that actually detect tab changes.
   - At least wrap `startSession` and `finalizeActiveSession` in asynchronous functions to be safe about a race condition that probably does not exist between them.
@@ -27,8 +27,12 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 #### Big To-Dos
 
 - Consistently track plane orientation (and position).
+  - Know when a click is actually a manuvering click.
+  - Track when a the plane drifts (esspecially for Thunderbolt).
+  - Know where the plane is when it isn't the center of the screen.
 - Make the graph more interactive.
 - Record your best weekly rank each week, best monthly rank each month, and each achieved all-time record separately with a timestamp.
+- Create a tool for making insights about various variables relative to each other, such and plane type and kills and accuracy during manuevers versus stationary.
 
 ### Installing
 
