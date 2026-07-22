@@ -1,4 +1,4 @@
-import type { ExtensionState, GameSession, GameBonusEntry, ClickEvent, ShotBurst, SessionDevEvent } from '../shared/types';
+import type { ExtensionState, GameSession, GameBonusEntry, ClickEvent, ShotBurst, SessionDevEvent, SelectedPlaneEvent } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
 
@@ -68,7 +68,7 @@ function getResult(recentStats: Record<string, unknown> | undefined, devEvent: S
 
 function getSessionResult(session: GameSession, recentStats: Record<string, unknown> | undefined) {
   const devEvents = session.metadata?.devEvents;
-  const panicDevEvent = devEvents?.find((event) => event.type === 'disconnect') as SessionDevEvent | undefined
+  const panicDevEvent = devEvents?.find((event) => event.type === 'disconnect') as SessionDevEvent | undefined;
 
   const result = getResult(recentStats, panicDevEvent);
   if (result === 'Won' && session.metadata?.team === 'red') return 'Lost';
@@ -88,6 +88,48 @@ function getDamagePerShot(recentStats: Record<string, unknown> | undefined) {
   const damage = Number(recentStats?.damage ?? 0);
   if (!shots) return 'n/a';
   return (damage / shots).toFixed(3);
+}
+
+function toDisplayPlane(selectedPlanes: SelectedPlaneEvent[] | undefined) {
+  let tier = 0;
+  const namedPlanes: Record <string, string> = {};
+
+  if (!selectedPlanes?.length) {
+    return ['unkown'];
+  }
+
+  for (const plane of selectedPlanes) {
+    tier += 1;
+    const type = plane?.id;
+
+    switch (tier) {
+      case 1:
+        if (type === 0) {
+          namedPlanes['Biplane'] = toDisplayTime(plane.timestamp);
+        } else if (type === 1) {
+          namedPlanes['Cavalier'] = toDisplayTime(plane.timestamp);
+        }
+        break;
+      case 2:
+        if (type === 0) {
+          namedPlanes['Mikoy'] = toDisplayTime(plane.timestamp);
+        } else if (type === 1) {
+          namedPlanes['Stripey Plane'] = toDisplayTime(plane.timestamp);
+        }
+        break;
+      case 3:
+        if (type === 0) {
+          namedPlanes['Thunderbolt'] = toDisplayTime(plane.timestamp);
+        } else if (type === 1) {
+          namedPlanes['Motsky'] = toDisplayTime(plane.timestamp);
+        } else if (type === 2) {
+          namedPlanes['Barrucda'] = toDisplayTime(plane.timestamp);
+        }
+        break;
+    }
+  }
+
+  return namedPlanes;
 }
 
 function renderOverview(state: ExtensionState) {
@@ -217,6 +259,9 @@ function render(state: ExtensionState) {
       const shotBursts = (session.metadata?.shotBursts as ShotBurst[] | undefined) ?? [];
       const gameBonuses = (session.metadata?.gameBonuses as GameBonusEntry[] | undefined) ?? [];
       const leftClicks = (session.metadata?.leftClicks as ClickEvent[] | undefined) ?? [];
+      const selectedPlanes = session.selectedPlanes ?? [];
+      const deathTimestamps = (session.metadata?.deathTimestamps as number[] | undefined) ?? [];
+      const planesDisplay = toDisplayPlane(selectedPlanes);
 
       const guidedScouts = gameBonuses
         .filter((entry) => String(entry?.type ?? '').includes('scouts-guided'))
@@ -345,6 +390,21 @@ function render(state: ExtensionState) {
       bonusDetails.appendChild(bonusSummary);
       bonusDetails.appendChild(bonusPre);
 
+      const planesDetails = document.createElement('details');
+      const planesSummary = document.createElement('summary');
+      planesSummary.textContent = 'Planes used';
+      const planesPre = document.createElement('pre');
+
+      const planesData = toDisplayPlane(session.selectedPlanes);
+
+      // Convert object/array to formatted JSON string
+      planesPre.textContent = typeof planesData === 'string'
+        ? planesData
+        : JSON.stringify(planesData, null, 2);
+
+      planesDetails.appendChild(planesSummary);
+      planesDetails.appendChild(planesPre);
+
       const devDetails = document.createElement('details');
       const devSummary = document.createElement('summary');
       devSummary.textContent = 'Dev mode';
@@ -362,6 +422,16 @@ function render(state: ExtensionState) {
         : 'No dev events recorded.';
       devDetails.appendChild(devSummary);
       devDetails.appendChild(devPre);
+
+      const deathsDetails = document.createElement('details');
+      const deathsSummary = document.createElement('summary');
+      deathsSummary.textContent = `Deaths`;
+      const deathsPre = document.createElement('pre');
+      deathsPre.textContent = deathTimestamps.length
+        ? deathTimestamps.map(timestamp => toDisplayTime(timestamp)).join('\n')
+        : 'No deaths recorded.';
+      deathsDetails.appendChild(deathsSummary);
+      deathsDetails.appendChild(deathsPre);
 
       const endingButtons = document.createElement('div');
       endingButtons.className = 'ending-buttons';
@@ -383,6 +453,8 @@ function render(state: ExtensionState) {
       card.appendChild(shotBurstDetails);
       card.appendChild(bonusDetails);
       card.appendChild(leftClicksDetails);
+      card.appendChild(planesDetails);
+      card.appendChild(deathsDetails);
       card.appendChild(devDetails);
       card.appendChild(endingButtons);
       sessionsList.appendChild(card);

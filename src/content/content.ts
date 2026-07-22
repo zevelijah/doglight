@@ -7,6 +7,7 @@ import type {
   SessionDevEvent,
   ShotBurst,
   ShotBurstEvent,
+  SelectedPlaneEvent
 } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
@@ -53,6 +54,7 @@ function buildSession(): GameSession {
     startedAt: Date.now(),
     status: 'active',
     clicks: [],
+    selectedPlanes: [],
     metadata: {
       origin: window.location.origin,
       url: window.location.href,
@@ -61,6 +63,7 @@ function buildSession(): GameSession {
       gameBonuses: [],
       leftClicks: [],
       devEvents: [],
+      deathTimestamps: [],
     },
   };
 }
@@ -75,6 +78,7 @@ function getMetadata(session: GameSession) {
       gameBonuses: [],
       leftClicks: [],
       devEvents: [],
+      deathTimestamps: [],
     };
   }
   return session.metadata as NonNullable<GameSession['metadata']>;
@@ -173,6 +177,26 @@ function beginNewShotBurst(session: GameSession | null, snapshot: RawStorageSnap
   const meta = getMetadata(session);
   if (!meta.shotBursts) meta.shotBursts = [];
   (meta.shotBursts as ShotBurst[]).push(currentShotBurst);
+}
+
+function handleDeathTracking(
+  snapshot: RawStorageSnapshot,
+  previousSnapshot: RawStorageSnapshot
+) {
+  if (!activeSession) return;
+  const previousDeaths = previousSnapshot.recentStats?.deaths ?? 0;
+  const currentDeaths = snapshot.recentStats?.deaths ?? 0;
+  const deathsDelta = currentDeaths - previousDeaths;
+
+  if (deathsDelta > 0) {
+    const meta = getMetadata(activeSession);
+    if (!meta.deathTimestamps) {
+      meta.deathTimestamps = [];
+    }
+    for (let i = 0; i < deathsDelta; i++) {
+      (meta.deathTimestamps as number[]).push(Date.now());
+    }
+  }
 }
 
 function setSelfTabId(): Promise<void> {
@@ -335,9 +359,9 @@ function handleBonusTracking(
       }
     } else {
       if (bonusDelta !== 5000 && bonusDelta % 2000 !== 0) {
-        appendGameBonusEntry(activeSession, 'performance-bonus', 'live', bonusDelta);
+        appendGameBonusEntry(activeSession, 'performance-bonus-detected', 'live', bonusDelta);
       } else if (bonusDelta === 5000 && !squadKilled && !bomberKilled) {
-        appendGameBonusEntry(activeSession, 'performance-bonus', 'live', bonusDelta);
+        appendGameBonusEntry(activeSession, 'performance-bonus-detected', 'live', bonusDelta);
       } else {
         if (bonusDelta === 5000) {
           if (bomberKilled) {
@@ -439,7 +463,8 @@ function captureSnapshot() {
     snapshot.recentStats?.bonus !== previousSnapshot.recentStats?.bonus ||
     snapshot.recentStats?.kills !== previousSnapshot.recentStats?.kills ||
     snapshot.recentStats?.bombers !== previousSnapshot.recentStats?.bombers ||
-    snapshot.recentStats?.scouts !== previousSnapshot.recentStats?.scouts;
+    snapshot.recentStats?.scouts !== previousSnapshot.recentStats?.scouts ||
+    snapshot.recentStats?.deaths !== previousSnapshot.recentStats?.deaths;
 
   if (hasChanged) {
     lastKnownSnapshot = snapshot;
@@ -477,11 +502,67 @@ function captureSnapshot() {
     ) {
       handleBonusTracking(snapshot, previousSnapshot);
     }
+    if (
+      previousSnapshot.recentStats &&
+      snapshot.recentStats &&
+      previousSnapshot.recentStats.deaths !== snapshot.recentStats.deaths
+    ) {
+      handleDeathTracking(snapshot, previousSnapshot);
+    }
+  }
+}
+
+function handlePlaneClick(cell: HTMLElement, snapshot: RawStorageSnapshot) {
+  if (!activeSession) return;
+
+  // Extract digits from cell ID (e.g. "cell0" -> 0, "cell2" -> 2)
+  const match = cell.id.match(/^cell(\d+)$/);
+  if (!match) return;
+
+  const planeId = parseInt(match[1], 10);
+
+  // Safety check: ensure array exists on activeSession
+  if (!activeSession.selectedPlanes) {
+    activeSession.selectedPlanes = [];
+  }
+
+  // OPTIONAL DEDUPLICATION: Only record if it's a change from the last selected plane
+  const lastSelected = activeSession.selectedPlanes[activeSession.selectedPlanes.length - 1] as SelectedPlaneEvent | undefined;
+  if ((!lastSelected && activeSession.selectedPlanes.length === 0) || (lastSelected && (lastSelected.id !== planeId || (activeSession.selectedPlanes.length === 1 && snapshot.stats?.score && snapshot.stats.score >= 30000) || (activeSession.selectedPlanes.length === 2 && snapshot.stats?.score && snapshot.stats.score >= 80000)))) {
+    const nextSelected: SelectedPlaneEvent = {
+      id: planeId,
+      timestamp: Date.now(),
+    };
+    
+    activeSession.selectedPlanes.push(nextSelected);
+    console.log(`[Content] Plane selected: ${planeId}, Tier ${activeSession.selectedPlanes.length}`, activeSession.selectedPlanes);
+    
+    // Persist active session state immediately
+    persistState({ currentSession: activeSession });
   }
 }
 
 // Optimization: Lightweight, non-blocking click recorder
 function recordClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  if (!target) return;
+
+  // 1. Check if the click occurred on or inside a plane cell (e.g. <td id="cell0">)
+  const planeCell = target.closest<HTMLElement>('.planeOption, [id^="cell"]');
+
+  if (planeCell) {
+    const snapshot = snapshotLocalStorage();
+    const previousSnapshot = lastKnownSnapshot;
+
+    if (snapshot.stats?.score !== previousSnapshot.stats?.score) {
+      lastKnownSnapshot = snapshot;
+      // applySnapshotToActiveSession(snapshot); // Unnessasary?
+    }
+
+    handlePlaneClick(planeCell, snapshot);
+    return; // ❌ Excludes this click from normal recordClick processing!
+  }
+
   if (!activeSession) return;
   const centerX = window.innerWidth / 2;
   const centerY = window.innerHeight / 2;
