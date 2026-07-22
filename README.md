@@ -10,7 +10,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Firing and movement cause noticeable flickering.
 - Some sessions become orphaned. The regular manual shutoff works if you keep the tab open, but the emergency fallbacks do not seem to catch them.
 - Possible race condition if you finalize an orphaned session by creating a new one.
-- One time, going back to the homepage with the back arrow started a new session altogether.
+- All-time high scores may not be getting saved.
 
 #### Small To-Dos
 
@@ -28,6 +28,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
 - Consistently track plane orientation (and position).
 - Make the graph more interactive.
+- Record your best weekly rank each week, best monthly rank each month, and each achieved all-time record separately with a timestamp.
 
 ### Installing
 
