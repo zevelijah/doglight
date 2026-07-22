@@ -668,12 +668,21 @@ function finalizeActiveSession(
     try {
       loadState((state) => {
         const nextSessions = [...(state.sessions ?? []), sessionToSave];
+        let bestAllTimeRank = state.bestAllTimeRank;
+        const newAllTimeHighScore = lastKnownSnapshot.stats?.allTimeHighScore;
+
+        if (typeof newAllTimeHighScore === 'number' && newAllTimeHighScore > 0) {
+          if (bestAllTimeRank === undefined || newAllTimeHighScore < bestAllTimeRank) {
+            bestAllTimeRank = newAllTimeHighScore;
+          }
+        }
         chrome.storage.local.set(
           {
             [STORAGE_KEY]: {
               ...state,
               currentSession: undefined,
               currentSessionTabId: undefined,
+              bestAllTimeRank,
               sessions: nextSessions,
               lastUpdated: Date.now(),
             },

@@ -98,4 +98,5 @@ export interface ExtensionState {
   latestName?: string;
   latestUid?: string;
   lastUpdated?: number;
+  bestAllTimeRank?: number;
 }
