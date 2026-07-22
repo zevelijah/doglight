@@ -1,10 +1,13 @@
-import type { ExtensionState, GameSession } from '../shared/types';
+import type { ExtensionState, GameSession, GameBonusEntry, ClickEvent, ShotBurst, SessionDevEvent } from '../shared/types';
 
 const STORAGE_KEY = 'doglight_state';
 
 type MetricValue = number | undefined;
 
 const isPopupView = new URLSearchParams(window.location.search).get('mode') === 'popup';
+
+// Keep track of the current page count outside render (or at module top-level)
+let visibleSessionCount = 10;
 
 function formatStats(value: Record<string, unknown> | undefined) {
   if (!value) return 'None';
@@ -16,21 +19,61 @@ function toDisplayTime(value: number | undefined) {
   return new Date(value).toLocaleString();
 }
 
+function displayBonusMessage(bonus: GameBonusEntry) {
+  let message: string | undefined;
+ 
+
+  if (bonus.type === 'scout-kill') {
+    message = 'scout killed'
+  } else if (bonus.type === 'bomber-kill') {
+    message = 'bomber killed'
+  } else if (bonus.type === 'bomber-guided') {
+    message = ' 1 bomber (or 5 sct.) guided'
+  } else if (bonus.type === 'scouts-guided') {
+    message = `${bonus.amount / 2000} scouts guided`
+  } else if (bonus.type === 'game-bonus') {
+    message = 'total game bonuses'
+  } else if (bonus.type === 'performance-bonus-detected') {
+    message = 'performance bonus detected'
+  } else if (bonus.type === 'performance-bonus') {
+    message = 'performance bonus'
+  } else {
+    message = 'unknown'
+  }
+  return message;
+}
+
 function formatMetric(value: MetricValue) {
   return typeof value === 'number' ? value.toString() : 'n/a';
 }
 
-function getResult(recentStats: Record<string, unknown> | undefined) {
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function getResult(recentStats: Record<string, unknown> | undefined, devEvent: SessionDevEvent | undefined) {
   const points = Number(recentStats?.points ?? 0);
   const pointsAgainst = Number(recentStats?.pointsAgainst ?? 0);
   const time = Number(recentStats?.time ?? 0);
   const shots = Number(recentStats?.shots ?? 0);
-  if (points != 100 && pointsAgainst  != 100 && (time < 1198 || shots === 0)) return 'Disconnected'; //detecing timeout or long period without shots will improve accuracy eventually
-  if (points === pointsAgainst) {  
-    return 'Tied';
-  }
+  if ((points !== 100 && pointsAgainst !== 100 && (time < 900 || shots === 0)) || devEvent?.type === 'disconnect') return 'Disconnected';
+  if (points === pointsAgainst) return 'Tied';
   if (points > pointsAgainst) return 'Won';
   if (points < pointsAgainst) return 'Lost';
+}
+
+function getSessionResult(session: GameSession, recentStats: Record<string, unknown> | undefined) {
+  const devEvents = session.metadata?.devEvents;
+  const panicDevEvent = devEvents?.find((event) => event.type === 'disconnect') as SessionDevEvent | undefined
+
+  const result = getResult(recentStats, panicDevEvent);
+  if (result === 'Won' && session.metadata?.team === 'red') return 'Lost';
+  if (result === 'Lost' && session.metadata?.team === 'red') return 'Won';
+  return result;
 }
 
 function getPrecision(recentStats: Record<string, unknown> | undefined) {
@@ -59,6 +102,9 @@ function renderOverview(state: ExtensionState) {
   const allTimeStats = state.latestStats as Record<string, unknown> | undefined;
   const latestRecent = state.latestRecentStats as Record<string, unknown> | undefined;
   const totalGames = Number(allTimeStats?.games ?? 0);
+  const devEvents = state.currentSession?.metadata?.devEvents as SessionDevEvent[] | undefined;
+  const panicDevEvent = devEvents?.find((event) => event.type === 'disconnect') as SessionDevEvent | undefined
+
 
   const rankingFields = [
     ['Weekly High Score', allTimeStats?.weeklyHighScore],
@@ -95,7 +141,7 @@ function renderOverview(state: ExtensionState) {
       <div class="stat-grid">
         <div class="stat-row">Points: ${formatMetric(latestRecent?.points as MetricValue)}</div>
         <div class="stat-row">Opponent points: ${formatMetric(latestRecent?.pointsAgainst as MetricValue)}</div>
-        <div class="stat-row">Result: ${getResult(latestRecent as Record<string, unknown> | undefined)}</div>
+        <div class="stat-row">Result: ${getResult(latestRecent as Record<string, unknown> | undefined, panicDevEvent)}</div>
         <div class="stat-row">Shots: ${formatMetric(latestRecent?.shots as MetricValue)}</div>
         <div class="stat-row">Hits: ${formatMetric(latestRecent?.hits as MetricValue)}</div>
         <div class="stat-row">Precision: ${getPrecision(latestRecent as Record<string, unknown> | undefined)}</div>
@@ -126,7 +172,7 @@ function render(state: ExtensionState) {
   if (recentSummary) recentSummary.textContent = formatStats(state.latestRecentStats as Record<string, unknown> | undefined);
   if (sessionSummary) {
     const current = state.currentSession as GameSession | undefined;
-    sessionSummary.textContent = current ? `${current.status} (${current.clicks.length} clicks)` : 'None';
+    sessionSummary.textContent = current ? `${current.status} (${current.clicks?.length ?? 0} clicks)` : 'None';
   }
 
   renderOverview(state);
@@ -139,114 +185,230 @@ function render(state: ExtensionState) {
   }
 
   sessionsSection.hidden = false;
-  const sessions = state.sessions ?? [];
-  if (!sessions.length) {
+  const rawSessions = state.sessions ?? [];
+  if (!rawSessions.length) {
     sessionsList.innerHTML = '<p>No sessions recorded yet.</p>';
     return;
   }
 
+  // 1. REVERSE ORDER: Newest sessions first
+  const sessions = [...rawSessions].reverse();
+
+  // Clear previous list
   sessionsList.innerHTML = '';
-  sessions.forEach((session) => {
-    const card = document.createElement('div');
-    card.className = 'session-card';
 
-    const summary = document.createElement('div');
-    const recentStats = session.recentStatsAtEnd as Record<string, unknown> | undefined;
-    const startTime = toDisplayTime(session.startedAt);
-    const endTime = toDisplayTime(session.endedAt);
-    const result = getResult(recentStats);
-    const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : result === 'Tied' ? 'tie' : 'disconnect';  
-    const sessionName = (session.metadata?.dogflightName as string | undefined) ?? 'Unknown';
-    const sessionUid = (session.metadata?.dogflightUid as string | undefined) ?? 'Unknown';
-    summary.innerHTML = `
-      Time: ${startTime}     Result: <span class="result-value ${resultClass}">${result}</span></div>
-      <details class="overview-details">
-        <summary>Show game stats</summary>
-        <div class="meta-group">
-          <div class="meta">Name: ${sessionName}</div>
-          <div class="meta">UID: ${sessionUid}</div
-        </div>  
-        <div class="meta-group">
-          <div class="meta">Start: ${startTime}</div>
-          <div class="meta">End: ${endTime || 'n/a'}</div>
-          <div class="meta">Length: ${recentStats?.time ? `${recentStats.time}` : 'n/a'}</div>
-          <div class="meta">Time Saved: ${recentStats?.timeSaved ?? 'n/a'}</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta">Your Team's Points: ${recentStats?.points ?? 'n/a'}</div>
-          <div class="meta">Opponent's Points: ${recentStats?.pointsAgainst ?? 'n/a'}</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta">Shots: ${recentStats?.shots ?? 'n/a'}</div>
-          <div class="meta">Hits: ${recentStats?.hits ?? 'n/a'}</div>
-          <div class="meta">Precision: ${getPrecision(recentStats)}</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta">Damage: ${recentStats?.damage ?? 'n/a'}</div>
-          <div class="meta">Damage / shot: ${getDamagePerShot(recentStats)}</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta">Bomber Kills: ${recentStats?.bombers ?? 'n/a'}</div>
-          <div class="meta">Scout Kills: ${recentStats?.scouts ?? 'n/a'}</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta">Player Kills: ${recentStats?.kills ?? 'n/a'}</div>
-          <div class="meta">Player Deaths: ${recentStats?.deaths ?? 'n/a'}</div>
-          <div class="meta">Kills - Deaths: ${Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0)}</div>
-        </div>
-        <div class="meta-group">
-          <div class="meta">Total Score: ${recentStats?.score ?? 'n/a'}</div>
-          <div class="meta">Bonus: ${recentStats?.bonus ?? 'n/a'}</div>
-        </div>
-      </details>
-    `;
+  // 2. PAGINATION: Slice only the visible sessions (10 at a time)
+  const visibleSessions = sessions.slice(0, visibleSessionCount);
 
-    const details = document.createElement('details');
-    const summaryEl = document.createElement('summary');
-    summaryEl.textContent = 'Show click locations';
-    const pre = document.createElement('pre');
-    pre.textContent = JSON.stringify(
-      session.clicks.map((click) => ({
-        button: click.button,
-        x: click.x,
-        y: click.y,
-        rawPageX: click.pageX,
-        rawPageY: click.pageY,
-      })),
-      null,
-      2,
-    );
-    details.appendChild(summaryEl);
-    details.appendChild(pre);
+  visibleSessions.forEach((session, index) => {
+    try {
+      const card = document.createElement('div');
+      card.className = 'session-card';
 
-    const devDetails = document.createElement('details');
-    const devSummary = document.createElement('summary');
-    devSummary.textContent = 'Dev mode';
-    const devPre = document.createElement('pre');
-    const devEvents = (session.metadata?.devEvents as Array<{ timestamp: number; type: string; detectedBy: string; details?: string }> | undefined) ?? [];
-    devPre.textContent = devEvents.length
-      ? devEvents
-          .map((event) => {
-            const time = toDisplayTime(event.timestamp);
-            const details = event.details ? ` (${event.details})` : '';
-            return `${event.type.toUpperCase()} @ ${time} via ${event.detectedBy}${details}`;
-          })
-          .join('\n')
-      : 'No dev events recorded.';
-    devDetails.appendChild(devSummary);
-    devDetails.appendChild(devPre);
+      const summary = document.createElement('div');
+      const recentStats = session.recentStatsAtEnd as Record<string, unknown> | undefined;
+      const startTime = toDisplayTime(session.startedAt);
+      const endTime = toDisplayTime(session.endedAt);
+      const result = getSessionResult(session, recentStats);
+      const resultClass = result === 'Won' ? 'win' : result === 'Lost' ? 'loss' : result === 'Tied' ? 'tie' : 'disconnect';
+      const sessionName = escapeHtml((session.metadata?.dogflightName as string | undefined) ?? 'Unknown');
+      const sessionUid = escapeHtml((session.metadata?.dogflightUid as string | undefined) ?? 'Unknown');
+      const teamLabel = escapeHtml((session.metadata?.team as 'green' | 'red' | undefined) ?? 'green');
+      const shotBursts = (session.metadata?.shotBursts as ShotBurst[] | undefined) ?? [];
+      const gameBonuses = (session.metadata?.gameBonuses as GameBonusEntry[] | undefined) ?? [];
+      const leftClicks = (session.metadata?.leftClicks as ClickEvent[] | undefined) ?? [];
 
-    const deleteButton = document.createElement('button');
-    deleteButton.textContent = 'Delete game';
-    deleteButton.className = 'secondary';
-    deleteButton.addEventListener('click', () => void deleteSession(session.id));
+      const guidedScouts = gameBonuses
+        .filter((entry) => String(entry?.type ?? '').includes('scouts-guided'))
+        .reduce((total, entry) => total + Number(entry.amount ?? 0) / 2000, 0);
 
-    card.appendChild(summary);
-    card.appendChild(details);
-    card.appendChild(devDetails);
-    card.appendChild(deleteButton);
-    sessionsList.appendChild(card);
+      const guidedBombers = gameBonuses
+        .filter((entry) => {
+          const typeStr = String(entry?.type ?? '');
+          return typeStr === 'bomber-guided' && typeStr.includes('guided');
+        }).length;
+
+      const bothBonusSummary = gameBonuses
+        .filter((entry) => {
+          const typeStr = String(entry?.type ?? '');
+          return typeStr === 'game-bonus' || typeStr === 'performance-bonus';
+        })
+        .map((entry) => {
+          const isGameBonus = String(entry?.type ?? '') === 'game-bonus';
+          return `${escapeHtml(isGameBonus ? 'Game bonus' : 'Performance bonus')} (${entry.amount ?? 'n/a'})`;
+        })
+        .join('<br/>');
+
+      summary.innerHTML = `
+        <div>Time: ${escapeHtml(startTime)}     Result: <span class="result-value ${resultClass}">${escapeHtml(result)}</span></div>
+        <details class="overview-details">
+          <summary>Show game stats</summary>
+          <div class="meta-group">
+            <div class="meta">Name: ${sessionName}</div>
+            <div class="meta">UID: ${sessionUid}</div>
+            <div class="meta">Team: ${teamLabel}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Start: ${escapeHtml(startTime)}</div>
+            <div class="meta">End: ${escapeHtml(endTime || 'n/a')}</div>
+            <div class="meta">Length: ${escapeHtml(recentStats?.time ? `${recentStats.time}` : 'n/a')}</div>
+            <div class="meta">Time Saved: ${escapeHtml(recentStats?.timeSaved ?? 'n/a')}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Your Team's Points: ${escapeHtml(recentStats?.points ?? 'n/a')}</div>
+            <div class="meta">Opponent's Points: ${escapeHtml(recentStats?.pointsAgainst ?? 'n/a')}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Shots: ${escapeHtml(recentStats?.shots ?? 'n/a')}</div>
+            <div class="meta">Hits: ${escapeHtml(recentStats?.hits ?? 'n/a')}</div>
+            <div class="meta">Precision: ${escapeHtml(getPrecision(recentStats))}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Damage: ${escapeHtml(recentStats?.damage ?? 'n/a')}</div>
+            <div class="meta">Damage / shot: ${escapeHtml(getDamagePerShot(recentStats))}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Bomber Kills: ${escapeHtml(recentStats?.bombers ?? 'n/a')}</div>
+            <div class="meta">Scout Kills: ${escapeHtml(recentStats?.scouts ?? 'n/a')}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Player Kills: ${escapeHtml(recentStats?.kills ?? 'n/a')}</div>
+            <div class="meta">Player Deaths: ${escapeHtml(recentStats?.deaths ?? 'n/a')}</div>
+            <div class="meta">Kills - Deaths: ${escapeHtml(Number(recentStats?.kills ?? 0) - Number(recentStats?.deaths ?? 0))}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Total Score: ${escapeHtml(recentStats?.score ?? 'n/a')}</div>
+            <div class="meta">Bonus: ${escapeHtml(recentStats?.bonus ?? 'n/a')}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">Bombers guided: ${escapeHtml(guidedBombers)}</div>
+            <div class="meta">Scouts guided: ${escapeHtml(guidedScouts.toFixed(0))}</div>
+          </div>
+          <div class="meta-group">
+            <div class="meta">${bothBonusSummary || 'No bonus entries recorded.'}</div>
+          </div>
+        </details>
+      `;
+
+      const shotBurstDetails = document.createElement('details');
+      const shotBurstSummary = document.createElement('summary');
+      shotBurstSummary.textContent = 'Shot bursts';
+      const shotBurstPre = document.createElement('pre');
+      shotBurstPre.textContent = shotBursts.length
+        ? shotBursts
+            .map((burst, burstIdx) => {
+              const eventsArr = burst?.events ?? [];
+              const events = eventsArr.map((event) => `${toDisplayTime(event.timestamp)} :: ${String(event.type ?? 'unknown')}`).join('\n');
+              return `Burst ${burstIdx + 1} ${escapeHtml((burst.x !== undefined ? `(Coords.: ${burst.x}, ${burst.y})` : 'n/a'))}\n${events}`;
+            })
+            .join('\n\n')
+        : 'No shot bursts recorded.';
+      shotBurstDetails.appendChild(shotBurstSummary);
+      shotBurstDetails.appendChild(shotBurstPre);
+
+      const leftClicksDetails = document.createElement('details');
+      const leftClicksSummary = document.createElement('summary');
+      leftClicksSummary.textContent = 'Left clicks';
+      const leftClicksPre = document.createElement('pre');
+      leftClicksPre.textContent = leftClicks.length
+        ? JSON.stringify(
+            leftClicks.map((click) => ({
+              timestamp: toDisplayTime(click.timestamp),
+              x: click.x,
+              y: click.y,
+              pageX: click.pageX,
+              pageY: click.pageY,
+            })),
+            null,
+            2,
+          )
+        : 'No left clicks recorded.';
+      leftClicksDetails.appendChild(leftClicksSummary);
+      leftClicksDetails.appendChild(leftClicksPre);
+
+      const bonusDetails = document.createElement('details');
+      const bonusSummary = document.createElement('summary');
+      bonusSummary.textContent = 'Game bonuses';
+      const bonusPre = document.createElement('pre');
+      bonusPre.textContent = gameBonuses.length
+        ? JSON.stringify(
+            gameBonuses.map((bonus) => ({
+              timestamp: toDisplayTime(bonus.timestamp),
+              message: displayBonusMessage(bonus),
+              source: bonus.source,
+              amount: bonus.amount ?? 'n/a',
+            })),
+            null,
+            2,
+          )
+        : 'No game bonuses recorded.';
+      bonusDetails.appendChild(bonusSummary);
+      bonusDetails.appendChild(bonusPre);
+
+      const devDetails = document.createElement('details');
+      const devSummary = document.createElement('summary');
+      devSummary.textContent = 'Dev mode';
+      const devPre = document.createElement('pre');
+      const devEvents = (session.metadata?.devEvents as Array<{ timestamp: number; type: string; detectedBy: string; details?: string }> | undefined) ?? [];
+      devPre.textContent = devEvents.length
+        ? devEvents
+            .map((event) => {
+              const time = toDisplayTime(event.timestamp);
+              const details = event.details ? ` (${event.details})` : '';
+              const eventType = String(event?.type ?? 'UNKNOWN').toUpperCase();
+              return `${eventType} @ ${time} via ${event.detectedBy}${details}`;
+            })
+            .join('\n')
+        : 'No dev events recorded.';
+      devDetails.appendChild(devSummary);
+      devDetails.appendChild(devPre);
+
+      const endingButtons = document.createElement('div');
+      endingButtons.className = 'ending-buttons';
+
+      const switchButton = document.createElement('button');
+      switchButton.textContent = 'Switch team';
+      switchButton.className = 'secondary';
+      switchButton.addEventListener('click', () => void switchTeams(session.id));
+
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete game';
+      deleteButton.className = 'secondary';
+      deleteButton.addEventListener('click', () => void deleteSession(session.id));
+
+      endingButtons.appendChild(switchButton);
+      endingButtons.appendChild(deleteButton);
+
+      card.appendChild(summary);
+      card.appendChild(shotBurstDetails);
+      card.appendChild(bonusDetails);
+      card.appendChild(leftClicksDetails);
+      card.appendChild(devDetails);
+      card.appendChild(endingButtons);
+      sessionsList.appendChild(card);
+
+    } catch (err) {
+      console.error(`[Viewer] Failed to render session at index ${index} (ID: ${session?.id}):`, err);
+    }
   });
+
+  // 3. LOAD MORE BUTTON: Render if there are more sessions to show
+  if (visibleSessionCount < sessions.length) {
+    const loadMoreContainer = document.createElement('div');
+    loadMoreContainer.className = 'load-more-container';
+
+    const loadMoreBtn = document.createElement('button');
+    loadMoreBtn.className = 'primary';
+    loadMoreBtn.textContent = `Load More Games (${sessions.length - visibleSessionCount} remaining)`;
+    
+    loadMoreBtn.addEventListener('click', () => {
+      visibleSessionCount += 10;
+      render(state);
+    });
+
+    loadMoreContainer.appendChild(loadMoreBtn);
+    sessionsList.appendChild(loadMoreContainer);
+  }
 }
 
 async function refresh() {
@@ -264,6 +426,41 @@ async function deleteSession(id: string) {
   await refresh();
 }
 
+async function switchTeams(id: string) {
+  const state = await loadState();
+
+  // 1. Toggle team inside the completed sessions list
+  state.sessions = (state.sessions ?? []).map((session) => {
+    if (session.id === id) {
+      const currentTeam = session.metadata?.team ?? 'green';
+      const nextTeam = currentTeam === 'green' ? 'red' : 'green';
+
+      return {
+        ...session,
+        metadata: {
+          ...(session.metadata ?? {}),
+          team: nextTeam,
+        },
+      };
+    }
+    return session;
+  });
+
+  // 2. Also toggle team if it happens to be the active session
+  // if (state.currentSession?.id === id) {
+  //   const currentTeam = state.currentSession.metadata?.team ?? 'green';
+  //   const nextTeam = currentTeam === 'green' ? 'red' : 'green';
+
+  //   state.currentSession.metadata = {
+  //     ...(state.currentSession.metadata ?? {}),
+  //     team: nextTeam,
+  //   };
+  // }
+
+  await saveState(state);
+  await refresh(); // Added () to actually invoke the function
+}
+
 async function exportJson() {
   const state = await loadState();
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -276,7 +473,35 @@ async function openFullPage() {
   await chrome.tabs.create({ url });
 }
 
+async function emergencyStopSession() {
+  const state = await loadState();
+  if (state.currentSessionTabId !== undefined) {
+    chrome.runtime.sendMessage({ type: 'EMERGENCY_STOP_SESSION' });
+  }
+
+  await refresh();
+}
+
+async function stopSession() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  
+  if (tab?.id) {
+    // 1. Try sending directly to content.ts
+    chrome.tabs.sendMessage(tab.id, { type: 'STOP_SESSION' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('Content script not responding. Falling back to background emergency stop.');
+        // 2. Fallback: If content.ts is dead or reloaded, notify background worker
+        chrome.runtime.sendMessage({ type: 'EMERGENCY_STOP_SESSION' });
+      }
+    });
+  }
+
+  await refresh();
+}
+
 document.getElementById('refresh')?.addEventListener('click', () => void refresh());
 document.getElementById('export')?.addEventListener('click', () => void exportJson());
 document.getElementById('openFullPage')?.addEventListener('click', () => void openFullPage());
+document.getElementById('stopSession')?.addEventListener('click', () => void stopSession());
+document.getElementById('emergencyStopSession')?.addEventListener('click', () => void emergencyStopSession());
 refresh();

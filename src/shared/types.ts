@@ -30,9 +30,37 @@ export interface ClickEvent {
 
 export interface SessionDevEvent {
   timestamp: number;
-  type: 'connect' | 'disconnect' | 'non-disconnect';
-  detectedBy: 'message' | 'listener' | 'game-count-change';
+  type: 'connect' | 'disconnect' | 'graceful';
+  detectedBy: 'message' | 'listener' | 'game-count-change' | 'background';
   details?: string;
+}
+
+export interface ShotBurstEvent {
+  id: string;
+  timestamp: number;
+  type: 'right-click' | 'shots-increase' | 'hits-increase' | 'bomber-kill' | 'scout-kill' | 'player-kill';
+  // message?: string;
+}
+
+export interface ShotBurst {
+  id: string;
+  startedAt: number;
+  endedAt?: number;
+  startedShots?: number;
+  startedHits?: number;
+  x?: number;
+  y?: number;
+  pageX?: number;
+  pageY?: number;
+  events: ShotBurstEvent[];
+}
+
+export interface GameBonusEntry {
+  id: string;
+  timestamp: number;
+  type: 'scout-kill' | 'squad-kill' |'bomber-kill' | 'bomber-guided' |'scouts-guided' | 'game-bonus' | 'performance-bonus-detected' | 'performance-bonus';
+  source: 'live' | 'finalization';
+  amount: number;
 }
 
 export interface GameSession {
@@ -47,11 +75,17 @@ export interface GameSession {
   clicks: ClickEvent[];
   metadata?: Record<string, unknown> & {
     devEvents?: SessionDevEvent[];
+    shotBursts?: ShotBurst[];
+    gameBonuses?: GameBonusEntry[];
+    leftClicks?: ClickEvent[];
+    team?: 'green' | 'red';
+    lastTrackedBonus?: number;
   };
 }
 
 export interface ExtensionState {
   currentSession?: GameSession;
+  currentSessionTabId?: number;
   sessions: GameSession[];
   latestStats?: DogflightStats;
   latestRecentStats?: DogflightStats;
