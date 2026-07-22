@@ -21,11 +21,13 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
   - When that is done, make sure both my buttons actually work.
 - Fixing the game results:
   - Figure out the pattern of team assignment, or some signal I can listen for
+- Make React code more native.
+  - Use tailwind CSS, maybe?
 
 #### Big To-Dos
 
 - Consistent tracking of plane orientaion (and position).
-- Finally importing react in order to make graphical represenation more pretty.
+- Make graph more interactive.
 
 ### Installing
 
