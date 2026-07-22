@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DogLight</title>
+    <title>DogLight Viewer</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -37,42 +37,13 @@
       details { margin-top: 8px; }
       summary { cursor: pointer; color: #93c5fd; }
       pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin-top: 6px; }
-
-      /* Styles for load more button container */
-      .load-more-container {
-        text-align: center;
-        margin: 20px 0;
-      }
-
-      /* Styles for buttons within the ending-buttons container */
-      .ending-buttons {
-        display: flex;
-        gap: 3px; /* Space between buttons */
-        margin-top: 12px; /* Space above the button group */
-      }
-      .ending-buttons button {
-        margin-top: 0; /* Override default button margin-top for horizontal layout */
-      }
-
+      .load-more-container { text-align: center; margin: 20px 0; }
+      .ending-buttons { display: flex; gap: 6px; margin-top: 12px; }
+      .ending-buttons button { margin-top: 0; }
     </style>
   </head>
   <body>
-    <div class="panel">
-      <h1>DogLight</h1>
-      <div class="row">Latest stats: <span id="statsSummary">None yet</span></div>
-      <div class="row">Latest recent stats: <span id="recentSummary">None yet</span></div>
-      <div class="row">Active session: <span id="sessionSummary">None</span></div>
-      <div id="overviewContainer"></div>
-      <button id="refresh">Refresh</button>
-      <button id="export" class="secondary">Export JSON</button>
-      <button id="stopSession" class="secondary">Stop Session</button>
-      <button id="emergencyStopSession" class="dangerous">Emergency Stop Session</button>
-      <button id="openFullPage" class="secondary" hidden>Open full viewer</button>
-    </div>
-    <div id="sessionsSection" class="panel" hidden>
-      <h2>Saved game sessions</h2>
-      <div id="sessionsList">Loading…</div>
-    </div>
-    <script type="module" src="./viewer.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
