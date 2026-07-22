@@ -63,11 +63,16 @@ export interface GameBonusEntry {
   amount: number;
 }
 
+export interface SelectedPlaneEvent {
+  id: number;
+  timestamp: number;
+}
 export interface GameSession {
   id: string;
   startedAt: number;
   endedAt?: number;
   status: 'active' | 'ended';
+  selectedPlanes: SelectedPlaneEvent[];
   statsAtStart?: DogflightStats;
   statsAtEnd?: DogflightStats;
   recentStatsAtStart?: DogflightStats;
