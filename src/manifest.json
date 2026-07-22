@@ -2,6 +2,8 @@
   "manifest_version": 3,
   "name": "DogLight",
   "version": "1.0.0",
+  "version-name": "1.0.0 (beta)",
+  "description": "Shine a light on your dogflight.io play.",
   "permissions": [
     "storage",
     "downloads",
