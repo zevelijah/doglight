@@ -25,7 +25,6 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 #### Big To-Dos
 
 - Consistent tracking of plane orientaion (and position).
-- Consistent tracking of plane type and switching.
 - Finally importing react in order to make graphical represenation more pretty.
 
 ### Installing
