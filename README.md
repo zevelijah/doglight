@@ -2,25 +2,26 @@
 
 Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
+### DISCLAIMER
+
+I am not affilated with the creators of [dogflight.io](https://dogflight.io/) in any way. Because I forgot to mention that in my description before sending the extension for review, there will be a brief period when the Google Web Store page doesn't say that. Sorry.
+
 ### Use
 
 #### Bugs
 
 - Cannot always automatically detect when you are on the red team.
-- Firing and movement cause noticeable flickering.
-- Sometimes huge lag spikes on the home screen.
 
 #### Small To-Dos
 
-- Improve the flickering. It is now mostly gone.
-  - `content.ts` might have to be lightend in favor of `injected.ts`.
+- Optimize my tools such that autosaving isn't preventitively costly.
 - Improve team detection.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.
   - Use Tailwind CSS, maybe?
 - Make sure firing location is saved for and only for the Barracuda.
 - Track team point increases that you don't get bonuses from.
-  - Make sure that how that information is viewed is responsive to which team the player was on, and be prepared for team changes.
+  - Make sure that how that information is viewed is responsive to which team the player was on, and be prepared for manual team changes.
 
 #### Big To-Dos
 
