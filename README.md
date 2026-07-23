@@ -63,3 +63,7 @@ npm run dev -- --host 127.0.0.1
 If this is your first time setting up the project, open `chrome://extensions` in Chrome or Chromium and enable **Developer mode** in the top-right corner. Then click **Load unpacked** in the top-left corner and select the generated `dist` folder. You should see the new extension appear.
 
 Each time you update the code and run `npm run build`, the extension will be rebuilt automatically. However, you will still need to click the **Reload** button on the extension's card in `chrome://extensions` for the changes to take effect.
+
+### Licensing
+
+This is available under the standard MIT license. Details available in the [LICENSE](https://github.com/zevelijah/doglight/blob/master/LICENSE) in the GitHub repository.
