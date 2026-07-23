@@ -10,6 +10,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Firing and movement cause noticeable flickering.
 - Sometimes huge lag spikes on the home screen.
 - If you got to the previous page use the arrow, a new session will start. You can use the "Stop Session" bot not the "Emergency Stop Session" to end it, ao you will want to keep your tab open and use the pop-up until that is fixed. This only happens sometimes.
+  - If you fail to do this, you can still end the session by starting a new one.
 - Possible race condition if you finalize an orphaned session by creating a new one.
 
 #### Small To-Dos
