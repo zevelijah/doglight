@@ -34,6 +34,7 @@ function initialize() {
           state.currentSession.status === 'active'
         ) {
           console.warn(`[Background] Rescuing session for Tab ${tabId}. Reason: ${reason}`);
+          chrome.tabs.sendMessage(tabId, { type: 'BACKGROUND_STOP_ACTIVATED' });
 
           const sessionToSave = state.currentSession;
           sessionToSave.endedAt = Date.now();

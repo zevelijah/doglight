@@ -749,6 +749,10 @@ function initialize() {
         sendResponse({ ok: true })
       );
       return true;
+    } else if (message?.type === 'BACKGROUND_STOP_ACTIVATED') {
+      activeSession = null;
+      sendResponse({ ok: true });
+      return true;
     }
     return false;
   });
