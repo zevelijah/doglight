@@ -7,13 +7,10 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 #### Bugs
 
 - Cannot always automatically detect when you are on the red team.
-- Firing and movement cause noticeable flickering.
-- Sometimes huge lag spikes on the home screen.
 
 #### Small To-Dos
 
-- Improve the flickering. It is now mostly gone.
-  - `content.ts` might have to be lightend in favor of `injected.ts`.
+- Optimize my tools such that autosaving isn't preventitively costly.
 - Improve team detection.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.

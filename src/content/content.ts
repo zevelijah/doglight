@@ -40,7 +40,7 @@ let lastKnownGameCount: number | null = null;
 let currentShotBurst: ShotBurst | null = null;
 let lastObservedBonusValue: number | undefined;
 let lastKnownRightClick: ClickEvent | null = null;
-let autosaveTimer: number | null = null;
+// let autosaveTimer: number | null = null;
 
 type DetectionMethod = 'message' | 'listener' | 'game-count-change';
 
@@ -240,7 +240,7 @@ function startSession(
 
   // Initial immediate flush to set active state on storage
   persistState({ currentSession: activeSession });
-  startAutosave();
+  // startAutosave();
 }
 
 function applySnapshotToActiveSession(snapshot: RawStorageSnapshot) {
@@ -413,22 +413,22 @@ function persistState(partial: Partial<ExtensionState>) {
   });
 }
 
-// Background batch writer: Flushes RAM buffer to storage periodically
-function startAutosave() {
-  stopAutosave();
-  autosaveTimer = window.setInterval(() => {
-    if (activeSession) {
-      persistState({ currentSession: activeSession });
-    }
-  }, 5000); // Saves every 5s instead of per-click
-}
+// // Background batch writer: Flushes RAM buffer to storage periodically
+// function startAutosave() {
+//   stopAutosave();
+//   autosaveTimer = window.setInterval(() => {
+//     if (activeSession) {
+//       persistState({ currentSession: activeSession });
+//     }
+//   }, 5000); // Saves every 5s instead of per-click
+// }
 
-function stopAutosave() {
-  if (autosaveTimer !== null) {
-    clearInterval(autosaveTimer);
-    autosaveTimer = null;
-  }
-}
+// function stopAutosave() {
+//   if (autosaveTimer !== null) {
+//     clearInterval(autosaveTimer);
+//     autosaveTimer = null;
+//   }
+// }
 
 function snapshotLocalStorage(): RawStorageSnapshot {
   const raw = window.localStorage;
@@ -595,7 +595,7 @@ function finalizeActiveSession(
   details?: string
 ): Promise<void> {
   return new Promise((resolve) => {
-    stopAutosave();
+    // stopAutosave();
 
     if (!activeSession) {
       resolve();
