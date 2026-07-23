@@ -1,4 +1,6 @@
 node_modules/*
 dist/*
+# randomtextfiles is a pile of refrence materials II collected from destroying commits and reverse engineering dogflight.io by hand.
 randomtextfiles/*
+# I have not added any AI related files but prompts. I never achieved that level of usage here because I wasn't spending money on that.
 prompts/*
