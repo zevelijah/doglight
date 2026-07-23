@@ -3,11 +3,15 @@
   "name": "DogLight",
   "version": "1.0.0",
   "version-name": "1.0.0 (beta)",
-  "description": "Shine a light on your dogflight.io play.",
+  "description": "Provides session-by-session game statistics for dogflight.io.",
+  "icons": {
+    "16": "assets/doglight-icon-16.png",
+    "32": "assets/doglight-icon-32.png",
+    "48": "assets/doglight-icon-48.png",
+    "128": "assets/doglight-icon-128.png"
+  },  
   "permissions": [
-    "storage",
-    "downloads",
-    "tabs"
+    "storage"
   ],
   "background": {
     "service_worker": "src/background/background.ts",
