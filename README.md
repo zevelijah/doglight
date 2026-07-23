@@ -6,21 +6,16 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
 #### Bugs
 
-- Cannot consistently detect when you are on the red team.
+- Cannot always automatically detect when you are on the red team.
 - Firing and movement cause noticeable flickering.
 - Sometimes huge lag spikes on the home screen.
-- If you got to the previous page use the arrow, a new session will start. You can use the "Stop Session" bot not the "Emergency Stop Session" to end it, ao you will want to keep your tab open and use the pop-up until that is fixed. This only happens sometimes.
-  - If you fail to do this, you can still end the session by starting a new one.
-- Possible race condition if you finalize an orphaned session by creating a new one.
 
 #### Small To-Dos
 
-- Fix the flickering. It is now mostly gone.
+- Improve the flickering. It is now mostly gone.
   - `content.ts` might have to be lightend in favor of `injected.ts`.
-- Fix orphaned sessions.
-  - At least wrap `startSession` and `finalizeActiveSession` in asynchronous functions to be safe about a race condition that probably does not exist between them.
-  - When that is done, make sure both buttons actually work. The emergency stop should always work, and certainly always when the regular one will.
-- Fix game results.
+- Track down the cause of the massive spike when the home page is open.
+- Improve team identification.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.
   - Use Tailwind CSS, maybe?
@@ -40,6 +35,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - GitHub Actions for automatic publication to Chrome Web Store.
   - The easiest method uses Google Cloud, which can integrate with Chrome Web Store with a bit of magic.
 - Make a website for users to share their data.
+  - Overhaul privacy policy when that happens.
 
 ### Installing
 
