@@ -9,17 +9,11 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Cannot always automatically detect when you are on the red team.
 - Firing and movement cause noticeable flickering.
 - Sometimes huge lag spikes on the home screen.
-- If you got to the previous page use the arrow, a new session will start. You can use the "Stop Session" or "Emergency Stop Session" to end it.
-  - If you fail to do this, you can still end the session by starting a new one.
-  - Only emergency stop works when you close the tab.
 
 #### Small To-Dos
 
 - Improve the flickering. It is now mostly gone.
   - `content.ts` might have to be lightend in favor of `injected.ts`.
-- Improve orphaned sessions.
-  - At least wrap `startSession` and `finalizeActiveSession` in asynchronous functions to be safe about a race condition that probably does not exist between them.
-  - When that is done, make sure both buttons actually work. The emergency stop should always work, and certainly always when the regular one will.
 - Improve team detection.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.
