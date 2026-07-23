@@ -21,7 +21,7 @@ I am not affilated with the creators of [dogflight.io](https://dogflight.io/) in
   - Use Tailwind CSS, maybe?
 - Make sure firing location is saved for and only for the Barracuda.
 - Track team point increases that you don't get bonuses from.
-  - Make sure that how that information is viewed is responsive to which team the player was on, and be prepared for team changes.
+  - Make sure that how that information is viewed is responsive to which team the player was on, and be prepared for manual team changes.
 
 #### Big To-Dos
 
