@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "DogLight",
-  "version": "1.0.0",
-  "version_name": "1.0.0 (beta)",
+  "version": "1.0.1",
+  "version_name": "1.0.1 (beta)",
   "description": "Provides session-by-session game statistics for dogflight.io.",
   "icons": {
     "16": "assets/doglight-icon-16.png",
