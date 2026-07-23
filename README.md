@@ -33,8 +33,6 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Create a tool for making insights about various variables relative to each other, such and plane type and kills and accuracy during manuevers versus stationary.
 - GitHub Actions for automatic publication to Chrome Web Store.
   - The easiest method uses Google Cloud, which can integrate with Chrome Web Store with a bit of magic.
-- Make a website for users to share their data.
-  - Overhaul privacy policy when that happens.
 
 ### Installing
 
