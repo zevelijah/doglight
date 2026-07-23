@@ -613,7 +613,7 @@ function finalizeActiveSession(
       currentShotBurst = null;
     }
 
-    if (details === 'manual stop') {
+    if (details === 'manual stop' || details === 'emergency stop overridden') {
       appendDevEvent(sessionToSave, 'disconnect', detectedBy, details);
     } else {
       appendDevEvent(sessionToSave, 'graceful', detectedBy, details);
@@ -741,6 +741,11 @@ function initialize() {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'STOP_SESSION') {
       void finalizeActiveSession('listener', 'manual stop').then(() =>
+        sendResponse({ ok: true })
+      );
+      return true;
+    } else if (message?.type === 'EMERGENCY_STOP_SESSION') {
+      void finalizeActiveSession('listener', 'emergency stop overridden').then(() =>
         sendResponse({ ok: true })
       );
       return true;
