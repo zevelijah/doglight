@@ -8,7 +8,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
 - Cannot consistently detect when you are on the red team.
 - Firing and movement cause noticeable flickering.
-- Some sessions become orphaned. The regular manual shutoff works if you keep the tab open, but the emergency fallbacks do not seem to catch them.
+- If you got to the previous page use the arrow, a new session will start. You can use the "Stop Session" bot not the "Emergency Stop Session" to end it, ao you will want to keep your tab open and use the pop-up until that is fixed.
 - Possible race condition if you finalize an orphaned session by creating a new one.
 
 #### Small To-Dos
@@ -16,9 +16,8 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Fix the flickering. It is now mostly gone.
   - `content.ts` might have to be lightend in favor of `injected.ts`.
 - Fix orphaned sessions.
-  - Add background fallbacks that actually detect tab changes.
   - At least wrap `startSession` and `finalizeActiveSession` in asynchronous functions to be safe about a race condition that probably does not exist between them.
-  - When that is done, make sure both buttons actually work.
+  - When that is done, make sure both buttons actually work. The emergency stop should always work, and certainly always when the regular one will.
 - Fix game results.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.
