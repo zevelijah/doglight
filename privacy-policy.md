@@ -64,5 +64,5 @@ We may update this Privacy Policy periodically. Any updates will be reflected by
 
 If you have questions, feedback, or concerns regarding this Privacy Policy, please open an issue on our official GitHub repository:
 
-- **GitHub Issues:** [https://github.com/zevelijah/doglight/issues]
+- **GitHub Issues:** <https://github.com/zevelijah/doglight/issues>
 - **Email:** <zevelijah@duck.com>
