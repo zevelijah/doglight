@@ -33,6 +33,8 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
 - Make the graph more interactive.
 - Record your best weekly rank each week, best monthly rank each month, and each achieved all-time record separately with a timestamp.
 - Create a tool for making insights about various variables relative to each other, such and plane type and kills and accuracy during manuevers versus stationary.
+- GitHub Actions for automatic publication to Chrome Web Store.
+  - The easiest method uses Google Cloud, which can integrate with Chrome Web Store with a bit of magic.
 
 ### Installing
 
