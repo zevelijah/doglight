@@ -23,6 +23,7 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.
   - Use Tailwind CSS, maybe?
+- Make sure firing location is saved for and only for the Barracuda.
 
 #### Big To-Dos
 
