@@ -2,6 +2,10 @@
 
 Shine a light on your [dogflight.io](https://dogflight.io/) play.
 
+### DISCLAIMER
+
+I am not affilated with the creators of [dogflight.io](https://dogflight.io/) in any way. Because I forgot to mention that in my description before send the Extension for review, there will be a brief period when the Google Web Store page doesn't say that. Sorry.
+
 ### Use
 
 #### Bugs
