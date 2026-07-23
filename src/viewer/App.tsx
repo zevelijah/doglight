@@ -96,7 +96,7 @@ function getDamagePerShot(recentStats: Record<string, unknown> | undefined) {
 function getPlaneNameByTier(id: number, tierIndex: number) {
   const tier = tierIndex + 1;
   if (tier === 1) return id === 0 ? 'Biplane' : 'Cavalier';
-  if (tier === 2) return id === 0 ? 'Mikoy' : 'Stripey Plane';
+  if (tier === 2) return id === 0 ? 'Mikoy' : 'Mustard';
   if (tier === 3) {
     if (id === 0) return 'Thunderbolt';
     if (id === 1) return 'Motsky';

@@ -23,6 +23,9 @@ Shine a light on your [dogflight.io](https://dogflight.io/) play.
   - Figure out the pattern of team assignment, or find some signal I can listen for.
 - Make the React code more idiomatic.
   - Use Tailwind CSS, maybe?
+- Make sure firing location is saved for and only for the Barracuda.
+- Track team point increases that you don't get bonuses from.
+  - Make sure that how that information is viewed is responsive to which team the player was on, and be prepared for team changes.
 
 #### Big To-Dos
 
