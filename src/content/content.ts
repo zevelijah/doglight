@@ -7,6 +7,7 @@ import type {
   SessionDevEvent,
   ShotBurst,
   ShotBurstEvent,
+  PointEvent,
   SelectedPlaneEvent
 } from '../shared/types';
 
@@ -64,6 +65,7 @@ function buildSession(): GameSession {
       leftClicks: [],
       devEvents: [],
       deathTimestamps: [],
+      pointEvents: [],
     },
   };
 }
@@ -79,6 +81,7 @@ function getMetadata(session: GameSession) {
       leftClicks: [],
       devEvents: [],
       deathTimestamps: [],
+      pointEvents: [],
     };
   }
   return session.metadata as NonNullable<GameSession['metadata']>;
@@ -196,6 +199,41 @@ function handleDeathTracking(
     for (let i = 0; i < deathsDelta; i++) {
       (meta.deathTimestamps as number[]).push(Date.now());
     }
+  }
+}
+
+function handlePointTracking(
+  snapshot: RawStorageSnapshot,
+  previousSnapshot: RawStorageSnapshot
+) {
+  if (!activeSession) return;
+  const previousPoints = previousSnapshot.recentStats?.points ?? 0;
+  const currentPoints = snapshot.recentStats?.points ?? 0;
+  const pointsDelta = currentPoints - previousPoints;
+
+  if (pointsDelta > 0) {
+    const meta = getMetadata(activeSession);
+    if (!meta.pointEvents) {
+      meta.pointEvents = [];
+    }
+    (meta.pointEvents as PointEvent[]).push({
+      timestamp: Date.now(),
+      type: 'points',
+      value: pointsDelta,
+    });
+  }
+
+  const previousPointsAgainst = previousSnapshot.recentStats?.pointsAgainst ?? 0;
+  const currentPointsAgainst = snapshot.recentStats?.pointsAgainst ?? 0;
+  const pointsAgainstDelta = currentPointsAgainst - previousPointsAgainst;
+
+  if (pointsAgainstDelta > 0) {
+    const meta = getMetadata(activeSession);
+    (meta.pointEvents as PointEvent[]).push({
+      timestamp: Date.now(),
+      type: 'pointsAgainst',
+      value: pointsAgainstDelta,
+    });
   }
 }
 
@@ -464,7 +502,9 @@ function captureSnapshot() {
     snapshot.recentStats?.kills !== previousSnapshot.recentStats?.kills ||
     snapshot.recentStats?.bombers !== previousSnapshot.recentStats?.bombers ||
     snapshot.recentStats?.scouts !== previousSnapshot.recentStats?.scouts ||
-    snapshot.recentStats?.deaths !== previousSnapshot.recentStats?.deaths;
+    snapshot.recentStats?.deaths !== previousSnapshot.recentStats?.deaths ||
+    snapshot.recentStats?.points !== previousSnapshot.recentStats?.points ||
+    snapshot.recentStats?.pointsAgainst !== previousSnapshot.recentStats?.pointsAgainst;
 
   if (hasChanged) {
     lastKnownSnapshot = snapshot;
@@ -508,6 +548,14 @@ function captureSnapshot() {
       previousSnapshot.recentStats.deaths !== snapshot.recentStats.deaths
     ) {
       handleDeathTracking(snapshot, previousSnapshot);
+    }
+    if (
+      previousSnapshot.recentStats &&
+      snapshot.recentStats &&
+      (previousSnapshot.recentStats.points !== snapshot.recentStats.points ||
+        previousSnapshot.recentStats.pointsAgainst !== snapshot.recentStats.pointsAgainst)
+    ) {
+      handlePointTracking(snapshot, previousSnapshot);
     }
   }
 }

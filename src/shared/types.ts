@@ -35,6 +35,12 @@ export interface SessionDevEvent {
   details?: string;
 }
 
+export interface PointEvent {
+  timestamp: number;
+  type: 'points' | 'pointsAgainst';
+  value: number;
+}
+
 export interface ShotBurstEvent {
   id: string;
   timestamp: number;
@@ -86,6 +92,7 @@ export interface GameSession {
     team?: 'green' | 'red';
     lastTrackedBonus?: number;
     deathTimestamps?: number[];
+    pointEvents?: PointEvent[];
   };
 }
 

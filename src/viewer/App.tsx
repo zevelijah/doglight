@@ -5,6 +5,7 @@ import type {
   GameBonusEntry,
   ClickEvent,
   ShotBurst,
+  PointEvent,
   SessionDevEvent,
   SelectedPlaneEvent,
 } from '../shared/types';
@@ -25,6 +26,8 @@ const GRAPH_COLORS = {
   bomberGuideLine: '#22c55e',// Bright green line
   scoutGuideLine: '#eab308', // Bright yellow line
   playerDeathLine: '#3b82f6',// Bright blue line
+  yourPointsLine: '#a855f7',   // Bright purple line
+  opponentPointsLine: '#581c87', // Dark purple line
 };
 
 // --- HELPER FUNCTIONS ---
@@ -138,6 +141,8 @@ function TimelineLegend() {
     { label: 'Bomber Guided', color: GRAPH_COLORS.bomberGuideLine, type: 'line' },
     { label: 'Scout Guided', color: GRAPH_COLORS.scoutGuideLine, type: 'line' },
     { label: 'Player Death', color: GRAPH_COLORS.playerDeathLine, type: 'line' },
+    { label: 'Your Points', color: GRAPH_COLORS.yourPointsLine, type: 'line' },
+    { label: 'Opponent Points', color: GRAPH_COLORS.opponentPointsLine, type: 'line' },
     { label: 'Minute Line', color: GRAPH_COLORS.grid, type: 'line' },
   ];
 
@@ -165,6 +170,7 @@ function TimelineLegend() {
 function SessionTimelineChart({ session }: { session: GameSession }) {
   const startTime = session.startedAt;
   const recentStats = session.recentStatsAtEnd as Record<string, unknown> | undefined;
+  const teamLabel = (session.metadata?.team as 'green' | 'red' | undefined) ?? 'green';
   const durationMs = recentStats?.time ? Number(recentStats.time) * 1000 : (session.endedAt ? session.endedAt - startTime : 60000);
   const endTime = startTime + (durationMs > 0 ? durationMs : 60000);
 
@@ -219,6 +225,24 @@ function SessionTimelineChart({ session }: { session: GameSession }) {
 
   // 3. Vertical Event Lines
   const eventLines: React.ReactNode[] = [];
+
+  // Point Increases
+  const pointEvents = (session.metadata?.pointEvents as PointEvent[] | undefined) ?? [];
+  pointEvents.forEach((event, pIdx) => {
+    const x = getX(event.timestamp);
+    const isYourTeam = (event.type === 'points' && teamLabel === 'green') || (event.type === 'pointsAgainst' && teamLabel === 'red');
+    const color = isYourTeam ? GRAPH_COLORS.yourPointsLine : GRAPH_COLORS.opponentPointsLine;
+    const label = `${event.value} pts. earned`;
+
+    eventLines.push(
+      <g key={`points-${pIdx}`}>
+        <line x1={x} y1={marginTop} x2={x} y2={height - marginBottom} stroke={color} strokeWidth="2" />
+        <text x={x} y={marginTop - 8} fill={color} fontSize="9" textAnchor="middle">
+          {label}
+        </text>
+      </g>
+    );
+  });
 
   // Plane Changes (Bright White + Top Label)
   (session.selectedPlanes ?? []).forEach((plane, pIdx) => {
@@ -567,6 +591,7 @@ function SessionCard({ session, onDelete, onSwitchTeam }: SessionCardProps) {
   const leftClicks = (session.metadata?.leftClicks as ClickEvent[] | undefined) ?? [];
   const selectedPlanes = session.selectedPlanes ?? [];
   const deathTimestamps = (session.metadata?.deathTimestamps as number[] | undefined) ?? [];
+  const pointEvents = (session.metadata?.pointEvents as PointEvent[] | undefined) ?? [];
   const planesDisplay = toDisplayPlane(selectedPlanes);
 
   const weekly = recentStats?.weeklyHighScore as number | undefined;
@@ -623,8 +648,8 @@ function SessionCard({ session, onDelete, onSwitchTeam }: SessionCardProps) {
           <div className="meta">Time Saved: {formatMetric(recentStats?.timeSaved as MetricValue)}</div>
         </div>
         <div className="meta-group">
-          <div className="meta">Your Team's Points: {formatMetric(recentStats?.points as MetricValue)}</div>
-          <div className="meta">Opponent's Points: {formatMetric(recentStats?.pointsAgainst as MetricValue)}</div>
+          <div className="meta">Your Team's Points: {formatMetric(teamLabel === 'green' ? recentStats?.points as MetricValue : recentStats?.pointsAgainst as MetricValue)}</div>
+          <div className="meta">Opponent's Points: {formatMetric(teamLabel === 'green' ? recentStats?.pointsAgainst as MetricValue : recentStats?.points as MetricValue)}</div>
         </div>
         <div className="meta-group">
           <div className="meta">Shots: {formatMetric(recentStats?.shots as MetricValue)}</div>
@@ -674,6 +699,20 @@ function SessionCard({ session, onDelete, onSwitchTeam }: SessionCardProps) {
               : 'No bonus entries recorded.'}
           </div>
         </div>
+      </details>
+
+      <details>
+        <summary>Point Increases</summary>
+        <pre>
+          {pointEvents.length
+            ? pointEvents
+                .map((event) => {
+                  const team = (event.type === 'points' && teamLabel === 'green') || (event.type === 'pointsAgainst' && teamLabel === 'red') ? 'Your team' : 'Opponent';
+                  return `${team} gained ${event.value} points at ${toDisplayTime(event.timestamp)}`;
+                })
+                .join('\n')
+            : 'No point increases recorded.'}
+        </pre>
       </details>
 
       <details>
