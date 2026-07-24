@@ -34,9 +34,9 @@ jobs:
       - name: Upload to Chrome Web Store
         uses: mobilefirstllc/cws-publish@latest
         with:
-          extension-id: ${{ secrets.EXTENSION_ID }}
-          client-id: ${{ secrets.CLIENT_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
-          refresh-token: ${{ secrets.REFRESH_TOKEN }}
-          zip-file: extension.zip
+          extension_id: ${{ secrets.EXTENSION_ID }}
+          client_id: ${{ secrets.CLIENT_ID }}
+          client_secret: ${{ secrets.CLIENT_SECRET }}
+          refresh_token: ${{ secrets.REFRESH_TOKEN }}
+          zip_file: extension.zip
           action: "upload"
