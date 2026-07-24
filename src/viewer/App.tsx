@@ -427,18 +427,57 @@ export default function App() {
     }
   }
 
+  let bestWeeklyRank = state.bestWeeklyRank;
+  if (bestWeeklyRank === undefined) {
+    let bestRank = Infinity;
+    for (const session of state.sessions) {
+      const rank = session.recentStatsAtEnd?.weeklyHighScore;
+      if (typeof rank === 'number' && rank > 0 && rank < bestRank) {
+        bestRank = rank;
+      }
+    }
+    if (bestRank === Infinity) {
+      bestWeeklyRank = 101;
+    } else {
+      bestWeeklyRank = bestRank;
+    }
+  }
+
+  let bestMonthlyRank = state.bestMonthlyRank;
+  if (bestMonthlyRank === undefined) {
+    let bestRank = Infinity;
+    for (const session of state.sessions) {
+      const rank = session.recentStatsAtEnd?.monthlyHighScore;
+      if (typeof rank === 'number' && rank > 0 && rank < bestRank) {
+        bestRank = rank;
+      }
+    }
+    if (bestRank === Infinity) {
+      bestMonthlyRank = 101;
+    } else {
+      bestMonthlyRank = bestRank;
+    }
+  }
+
   const rankingFields = [
     ['Weekly High Score', allTimeStats?.weeklyHighScore],
     ['Monthly High Score', allTimeStats?.monthlyHighScore],
   ];
-  if (bestAllTimeRank !== undefined && bestAllTimeRank <= 100) {
-    rankingFields.push(['All Time High Score', bestAllTimeRank]);
-  }
   const rankingText = rankingFields
     .filter(([, value]) => typeof value === 'number' && Number(value) > 0)
     .map(([label, value]) => `${label}: ${value}`)
     .join('   ');
 
+  const bestRankingFields = [
+    ['Weekly High Score', bestWeeklyRank],
+    ['Monthly High Score', bestMonthlyRank],
+    ['All Time High Score', bestAllTimeRank],
+  ];
+  const bestRankingText = bestRankingFields
+    .filter(([, value]) => typeof value === 'number' && value > 0 && value <= 100)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join('   ');
+  
   const rawSessions = state.sessions ?? [];
   const reversedSessions = [...rawSessions].reverse();
   const visibleSessions = reversedSessions.slice(0, visibleSessionCount);
@@ -469,7 +508,7 @@ export default function App() {
             <summary>Overall stats</summary>
             <div className="overview-line">
               {rankingText || 'No rankings yet'}     Games: {Number(allTimeStats?.games ?? 0)}      Best:{' '}
-              {rankingText || 'n/a'}
+              {bestRankingText || 'n/a'}
             </div>
             <div className="stat-grid">
               <div className="stat-row">Shots: {formatMetric(allTimeStats?.shots as MetricValue)}</div>

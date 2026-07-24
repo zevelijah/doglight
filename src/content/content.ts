@@ -717,11 +717,25 @@ function finalizeActiveSession(
       loadState((state) => {
         const nextSessions = [...(state.sessions ?? []), sessionToSave];
         let bestAllTimeRank = state.bestAllTimeRank;
+        let bestWeeklyRank = state.bestWeeklyRank;
+        let bestMonthlyRank = state.bestMonthlyRank;
         const newAllTimeHighScore = lastKnownSnapshot.stats?.allTimeHighScore;
+        const newWeeklyHighScore = lastKnownSnapshot.stats?.weeklyHighScore;
+        const newMonthlyHighScore = lastKnownSnapshot.stats?.monthlyHighScore;
 
         if (typeof newAllTimeHighScore === 'number' && newAllTimeHighScore > 0) {
           if (bestAllTimeRank === undefined || newAllTimeHighScore < bestAllTimeRank) {
             bestAllTimeRank = newAllTimeHighScore;
+          }
+        }
+        if (typeof newWeeklyHighScore === 'number' && newWeeklyHighScore > 0) {
+          if (bestWeeklyRank === undefined || newWeeklyHighScore < bestWeeklyRank) {
+            bestWeeklyRank = newWeeklyHighScore;
+          }
+        }
+        if (typeof newMonthlyHighScore === 'number' && newMonthlyHighScore > 0) {
+          if (bestMonthlyRank === undefined || newMonthlyHighScore < bestMonthlyRank) {
+            bestMonthlyRank = newMonthlyHighScore;
           }
         }
         chrome.storage.local.set(
@@ -731,6 +745,8 @@ function finalizeActiveSession(
               currentSession: undefined,
               currentSessionTabId: undefined,
               bestAllTimeRank,
+              bestWeeklyRank,
+              bestMonthlyRank,
               sessions: nextSessions,
               lastUpdated: Date.now(),
             },
