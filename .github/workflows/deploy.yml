@@ -31,12 +31,12 @@ jobs:
           zip -r ../extension.zip .
           cd ..
 
-      - name: Upload & Publish to Chrome Web Store
-        uses: chrome-stats/chrome-extension-deploy@v2
+      - name: Upload to Chrome Web Store
+        uses: mobilefirstllc/cws-publish@latest
         with:
           extension-id: ${{ secrets.EXTENSION_ID }}
           client-id: ${{ secrets.CLIENT_ID }}
           client-secret: ${{ secrets.CLIENT_SECRET }}
           refresh-token: ${{ secrets.REFRESH_TOKEN }}
           zip-file: extension.zip
-          publish: false # Automatically submits for review/publication
+          action: "upload"
