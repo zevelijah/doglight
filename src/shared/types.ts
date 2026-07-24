@@ -106,4 +106,6 @@ export interface ExtensionState {
   latestUid?: string;
   lastUpdated?: number;
   bestAllTimeRank?: number;
+  bestWeeklyRank?: number;
+  bestMonthlyRank?: number;
 }
