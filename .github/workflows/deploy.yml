@@ -1,0 +1,42 @@
+name: Build and Publish Extension
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Extension
+        run: npm run build
+
+      - name: Create Extension Zip
+        run: |
+          cd dist
+          zip -r ../extension.zip .
+          cd ..
+
+      - name: Upload & Publish to Chrome Web Store
+        uses: chrome-stats/chrome-extension-deploy@v2
+        with:
+          extension-id: ${{ secrets.EXTENSION_ID }}
+          client-id: ${{ secrets.CLIENT_ID }}
+          client-secret: ${{ secrets.CLIENT_SECRET }}
+          refresh-token: ${{ secrets.REFRESH_TOKEN }}
+          zip-file: extension.zip
+          publish: false # Automatically submits for review/publication
