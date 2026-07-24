@@ -11,6 +11,7 @@ I am not affilated with the creators of [dogflight.io](https://dogflight.io/) in
 #### Bugs
 
 - Cannot always automatically detect when you are on the red team.
+- Best ever ranks by type don't always update.
 
 #### Small To-Dos
 
@@ -20,8 +21,6 @@ I am not affilated with the creators of [dogflight.io](https://dogflight.io/) in
 - Make the React code more idiomatic.
   - Use Tailwind CSS, maybe?
 - Make sure firing location is saved for and only for the Barracuda.
-- Track team point increases that you don't get bonuses from.
-  - Make sure that how that information is viewed is responsive to which team the player was on, and be prepared for manual team changes.
 
 #### Big To-Dos
 
@@ -32,8 +31,6 @@ I am not affilated with the creators of [dogflight.io](https://dogflight.io/) in
 - Make the graph more interactive.
 - Record your best weekly rank each week, best monthly rank each month, and each achieved all-time record separately with a timestamp.
 - Create a tool for making insights about various variables relative to each other, such and plane type and kills and accuracy during manuevers versus stationary.
-- GitHub Actions for automatic publication to Chrome Web Store.
-  - The easiest method uses Google Cloud, which can integrate with Chrome Web Store with a bit of magic.
 
 ### Installing
 
